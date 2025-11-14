@@ -1,19 +1,5 @@
 version: "3.9"
 services:
-  backend:
-    build: ./backend
-    container_name: backend_rtrw
-    ports:
-      - "5000:5000"
-    depends_on:
-      - db
-    environment:
-      - DATABASE_URL=postgresql://postgres:123456@db:5432/manajemen_rtrw
-      - JWT_SECRET=rahasia_super
-    volumes:
-      - ./backend:/app
-    restart: always
-
   db:
     image: postgres:15
     container_name: db_rtrw
@@ -26,6 +12,20 @@ services:
     volumes:
       - ./database/manajemen_rtrw.sql:/docker-entrypoint-initdb.d/init.sql
       - db_data:/var/lib/postgresql/data
+    restart: always
+
+  backend:
+    build: ./backend
+    container_name: backend_rtrw
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://postgres:123456@db:5432/manajemen_rtrw
+      - JWT_SECRET=rahasia_super
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
     restart: always
 
 volumes:

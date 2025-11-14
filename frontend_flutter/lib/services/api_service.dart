@@ -13,27 +13,57 @@ class ApiService {
 
   static String? get token => _token;
 
-  // === LOGIN ===
-  static Future<Map<String, dynamic>> login(String email, String password) async {
+  // === LOGIN (email atau username lewat "identifier") ===
+  static Future<Map<String, dynamic>> login(
+      String identifier, String password) async {
     try {
       final response = await http.post(
         Uri.parse("$baseUrl/auth/login"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"email": email, "password": password}),
+        body: jsonEncode({
+          "identifier": identifier, // <- backend terima identifier
+          "password": password,
+        }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setToken(data['token']); // simpan token
+
+        // Simpan token
+        setToken(data['token']);
+
+        // Ambil user dan id_role dari response backend
+        final user = data['user'];
+        final int roleId = user['id_role'];
+
+        // Mapping id_role -> nama peran
+        String roleName;
+        switch (roleId) {
+          case 1:
+            roleName = "RW";
+            break;
+          case 2:
+            roleName = "RT";
+            break;
+          case 3:
+            roleName = "Warga";
+            break;
+          default:
+            roleName = "unknown";
+        }
 
         return {
           "success": true,
           "token": data['token'],
-          "role": data['role'] ?? "unknown",
+          "role": roleName,
+          "user": user,
         };
       } else {
         final data = jsonDecode(response.body);
-        return {"success": false, "message": data['message'] ?? "Login gagal"};
+        return {
+          "success": false,
+          "message": data['message'] ?? "Login gagal",
+        };
       }
     } catch (e) {
       return {"success": false, "message": "Terjadi kesalahan: $e"};
@@ -55,7 +85,10 @@ class ApiService {
         return {"success": true, "data": data['data']};
       } else {
         final data = jsonDecode(response.body);
-        return {"success": false, "message": data['message'] ?? "Gagal mengambil data"};
+        return {
+          "success": false,
+          "message": data['message'] ?? "Gagal mengambil data"
+        };
       }
     } catch (e) {
       return {"success": false, "message": "Terjadi kesalahan: $e"};

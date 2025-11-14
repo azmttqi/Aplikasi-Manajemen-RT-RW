@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import './register_screen.dart'; // Import halaman registrasi
-import './forgot_password_screen.dart'; // Import file baru 
+import '../../services/api_service.dart';
+import '../rw/dashboard_rw.dart';
+import '../rt/dashboard_rt.dart';
+// TODO: import dashboard RT / Warga kalau sudah ada
 
-// 1. Nama class-nya adalah LoginPage, sesuai nama file
+import './register_screen.dart';
+import './forgot_password_screen.dart';
+
 class LoginPage extends StatefulWidget {
   static const String routeName = '/login';
   const LoginPage({super.key});
@@ -12,19 +16,92 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // State untuk mengontrol visibilitas password
   bool _isPasswordHidden = true;
-
-  // State untuk menampilkan pesan error
   bool _showError = false;
+  String _errorText = "username atau password salah.";
+
+  // controller input
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isLoading = false;
+
+  Future<void> _handleLogin() async {
+    setState(() {
+      _isLoading = true;
+      _showError = false;
+    });
+
+    final identifier = _usernameController.text.trim(); // username / email
+    final password = _passwordController.text;
+
+    if (identifier.isEmpty || password.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _showError = true;
+        _errorText = "Username dan password wajib diisi.";
+      });
+      return;
+    }
+
+    final result = await ApiService.login(identifier, password);
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      final role = result['role'] as String;
+
+      if (role == "RW") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardRW()),
+        );
+      } else if (role == "RT") {
+        // TODO: ganti dengan DashboardRT kalau sudah ada
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardRT()),
+        );
+      } else if (role == "Warga") {
+        // TODO: ganti dengan DashboardWarga kalau sudah ada
+        setState(() {
+          _showError = true;
+          _errorText =
+              "Peran Warga terdeteksi, tapi halaman Dashboard Warga belum di-setup.";
+        });
+      } else {
+        setState(() {
+          _showError = true;
+          _errorText = "Peran tidak dikenali.";
+        });
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = false;
+        _showError = true;
+        _errorText = (result['message'] ?? "Login gagal.").toString();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Kita gunakan bottomNavigationBar untuk footer agar selalu menempel di bawah
+      // footer tetap sama
       bottomNavigationBar: Container(
         height: 50,
-        color: const Color(0xFF678267), // Warna hijau footer
+        color: const Color(0xFF678267),
         child: const Center(
           child: Text(
             "©2025 Lingkar Warga App",
@@ -35,8 +112,6 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-      // Gunakan SingleChildScrollView agar layar bisa di-scroll
-      // saat keyboard muncul
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -44,15 +119,15 @@ class _LoginPageState extends State<LoginPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 60), // Jarak dari atas
+              const SizedBox(height: 60),
 
-              // --- 1. Logo dan Tagline ---
+              // logo & judul
               _buildLogoSection(),
-
               const SizedBox(height: 40),
 
-              // --- 2. Input Username ---
+              // --- Username (yg dikirim sebagai identifier) ---
               TextFormField(
+                controller: _usernameController,
                 decoration: const InputDecoration(
                   labelText: "Username",
                   hintText: "masukan username anda",
@@ -63,9 +138,10 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 16),
 
-              // --- 3. Input Password ---
+              // --- Password ---
               TextFormField(
-                obscureText: _isPasswordHidden, // Gunakan state
+                controller: _passwordController,
+                obscureText: _isPasswordHidden,
                 decoration: InputDecoration(
                   labelText: "Password",
                   hintText: "masukan password anda",
@@ -77,7 +153,6 @@ class _LoginPageState extends State<LoginPage> {
                           : Icons.visibility_outlined,
                     ),
                     onPressed: () {
-                      // Update state untuk toggle visibilitas
                       setState(() {
                         _isPasswordHidden = !_isPasswordHidden;
                       });
@@ -88,38 +163,41 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 12),
 
-              // --- 4. Pesan Error (Opsional) ---
-              // Tampilkan widget ini jika state _showError == true
+              // error banner
               if (_showError) _buildErrorBanner(),
 
               const SizedBox(height: 24),
 
-              // --- 5. Tombol Login ---
+              // --- Tombol Login ---
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue, // Warna biru
-                  foregroundColor: Colors.white, // Warna teks putih
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.0),
                   ),
                 ),
-                onPressed: () {
-                  // TODO: Tambahkan logika login di sini
-                  setState(() {
-                    _showError = true; // Tampilkan error saat login gagal
-                  });
-                },
-                child: const Text(
-                  "Login",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                onPressed: _isLoading ? null : _handleLogin,
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text(
+                        "Login",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
 
               const SizedBox(height: 24),
 
-              // --- 6. Link Lupa Password & Daftar ---
-              _buildFooterLinks(), // Memanggil fungsi yang sudah benar
+              // Lupa password & daftar
+              _buildFooterLinks(),
             ],
           ),
         ),
@@ -127,12 +205,9 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Widget terpisah untuk bagian Logo
   Widget _buildLogoSection() {
     return Column(
       children: [
-        // GANTI INI DENGAN LOGO ANDA
-        // Gunakan Image.asset('assets/images/logo.png') jika punya file gambar
         Icon(
           Icons.home_work_rounded,
           size: 80,
@@ -158,68 +233,68 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Widget terpisah untuk banner error
   Widget _buildErrorBanner() {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFDC3545), // Warna merah
+        color: const Color(0xFFDC3545),
         borderRadius: BorderRadius.circular(8.0),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(
+          const Icon(
             Icons.error_outline_rounded,
             color: Colors.white,
             size: 20,
           ),
-          SizedBox(width: 10),
-          Text(
-            "username atau password salah.",
-            style: TextStyle(color: Colors.white, fontSize: 13),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _errorText,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
           ),
         ],
       ),
     );
   }
 
-  //
-  // --- INI BAGIAN YANG DIPERBAIKI ---
-  //
- Widget _buildFooterLinks() {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      TextButton(
-        onPressed: () {
-          // GANTI TODO ANDA DENGAN INI:
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
-          );
-        },
-        child: const Text(
-          "Lupa Password?",
-          style: TextStyle(color: Colors.blue, fontSize: 14),
+  Widget _buildFooterLinks() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ForgotPasswordScreen(),
+              ),
+            );
+          },
+          child: const Text(
+            "Lupa Password?",
+            style: TextStyle(color: Colors.blue, fontSize: 14),
           ),
         ),
         Text(
-          "|", // Pemisah sederhana
+          "|",
           style: TextStyle(color: Colors.grey[400]),
         ),
         TextButton(
           onPressed: () {
-            // INI ADALAH LOGIKA NAVIGASI YANG BENAR
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const RegisterScreen()),
+              MaterialPageRoute(
+                builder: (context) => const RegisterScreen(),
+              ),
             );
           },
           child: const Text(
             "Daftar Sekarang",
             style: TextStyle(
               color: Colors.blue,
-              fontWeight: FontWeight.bold, // Dibuat bold seperti di gambar
+              fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
           ),

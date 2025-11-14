@@ -5,44 +5,72 @@ import pool from "../config/db.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-// 🔹 Registrasi RW
-export const registerRW = async (req, res) => {
+/**
+ * 🛠️ Fungsi Bantu untuk menangani pendaftaran pengguna berdasarkan peran (role) tertentu
+ * @param {string} roleName - Nama peran ('RW', 'RT', atau 'Warga')
+ */
+const registerUserByRole = (roleName) => async (req, res) => {
   const { email, password } = req.body;
   try {
+    // 1. Hash kata sandi
     const hashed = await bcrypt.hash(password, 10);
 
+    // 2. Dapatkan ID peran (id_role)
     const roleRes = await pool.query(
-      "SELECT id_role FROM roles WHERE nama_role = 'RW'"
+      "SELECT id_role FROM roles WHERE nama_role = $1",
+      [roleName]
     );
+
+    // Cek dasar jika peran tidak ditemukan
+    if (roleRes.rows.length === 0) {
+      return res.status(400).json({ message: `Role '${roleName}' tidak ditemukan.` });
+    }
+
     const id_role = roleRes.rows[0].id_role;
 
+    // 3. Masukkan pengguna baru ke database
     const insertUser = await pool.query(
       "INSERT INTO pengguna (email, password_hash, id_role) VALUES ($1,$2,$3) RETURNING *",
       [email, hashed, id_role]
     );
 
     res.status(201).json({
-      message: "Akun RW berhasil dibuat",
+      message: `Akun ${roleName} berhasil dibuat`,
       user: insertUser.rows[0],
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Gagal registrasi RW" });
+    console.error(`Error saat registrasi ${roleName}:`, err);
+    
+    // Penanganan error duplikasi email (asumsi ada UNIQUE constraint pada email)
+    if (err.code === '23505') { // Kode error unik violation PostgreSQL
+        return res.status(409).json({ message: "Email sudah terdaftar" });
+    }
+    
+    res.status(500).json({ message: `Gagal registrasi ${roleName}` });
   }
 };
 
+// 🔹 Registrasi RW (sekarang menggunakan fungsi bantu)
+export const registerRW = registerUserByRole("RW");
+
+// 🔹 Registrasi RT (sekarang menggunakan fungsi bantu)
+export const registerRT = registerUserByRole("RT");
+
+// 🔹 Registrasi Warga (sekarang menggunakan fungsi bantu)
+export const registerWarga = registerUserByRole("Warga");
+
 // 🔹 Login Semua Role
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { identifier, password } = req.body; // <= BUKAN "email" lagi
   try {
     const userRes = await pool.query(
-      "SELECT * FROM pengguna WHERE email = $1",
-      [email]
+      "SELECT * FROM pengguna WHERE email = $1 OR username = $1",
+      [identifier]
     );
 
     const user = userRes.rows[0];
     if (!user) {
-      return res.status(400).json({ message: "Email tidak ditemukan" });
+      return res.status(400).json({ message: "Email / Username tidak ditemukan" });
     }
 
     const match = await bcrypt.compare(password, user.password_hash);
@@ -65,63 +93,12 @@ export const login = async (req, res) => {
       user: {
         id_pengguna: user.id_pengguna,
         email: user.email,
+        username: user.username,    // <= kalau mau dipakai di frontend
         id_role: user.id_role,
       },
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Login gagal" });
-  }
-};
-
-// 🔹 Registrasi RT
-export const registerRT = async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const hashed = await bcrypt.hash(password, 10);
-
-    const roleRes = await pool.query(
-      "SELECT id_role FROM roles WHERE nama_role = 'RT'"
-    );
-    const id_role = roleRes.rows[0].id_role;
-
-    const insertUser = await pool.query(
-      "INSERT INTO pengguna (email, password_hash, id_role) VALUES ($1,$2,$3) RETURNING *",
-      [email, hashed, id_role]
-    );
-
-    res.status(201).json({
-      message: "Akun RT berhasil dibuat",
-      user: insertUser.rows[0],
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Gagal registrasi RT" });
-  }
-};
-
-// 🔹 Registrasi Warga
-export const registerWarga = async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const hashed = await bcrypt.hash(password, 10);
-
-    const roleRes = await pool.query(
-      "SELECT id_role FROM roles WHERE nama_role = 'Warga'"
-    );
-    const id_role = roleRes.rows[0].id_role;
-
-    const insertUser = await pool.query(
-      "INSERT INTO pengguna (email, password_hash, id_role) VALUES ($1,$2,$3) RETURNING *",
-      [email, hashed, id_role]
-    );
-
-    res.status(201).json({
-      message: "Akun Warga berhasil dibuat",
-      user: insertUser.rows[0],
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Gagal registrasi Warga" });
   }
 };
