@@ -82,7 +82,7 @@ VALUES
 ),
 (
   'rt001@mail.com',
-  'rt001',
+  'rt001',  
   '$2b$10$4j2v0jnPD.T/A2ZrAwTAwOni.qZkkga9B9NDptEm6cCkMaKqBG5CG',
   (SELECT id_role FROM roles WHERE nama_role = 'RT')
 )

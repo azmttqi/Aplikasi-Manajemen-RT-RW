@@ -62,6 +62,8 @@ export const registerWarga = registerUserByRole("Warga");
 // 🔹 Login Semua Role
 export const login = async (req, res) => {
   const { identifier, password } = req.body; // <= BUKAN "email" lagi
+
+  console.log("identifier : ", identifier);
   try {
     const userRes = await pool.query(
       "SELECT * FROM pengguna WHERE email = $1 OR username = $1",
@@ -69,6 +71,8 @@ export const login = async (req, res) => {
     );
 
     const user = userRes.rows[0];
+
+    console.log("user : ", user);
     if (!user) {
       return res.status(400).json({ message: "Email / Username tidak ditemukan" });
     }

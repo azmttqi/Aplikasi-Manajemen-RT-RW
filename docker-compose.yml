@@ -5,12 +5,12 @@ services:
     container_name: db_rtrw
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123456
-      POSTGRES_DB: manajemen_rtrw
+      POSTGRES_PASSWORD: karawang3
+      POSTGRES_DB: manajemen_rtrw2
     ports:
       - "5432:5432"
     volumes:
-      - ./database/manajemen_rtrw.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./database/manajemen_rtrw2.sql:/docker-entrypoint-initdb.d/init.sql
       - db_data:/var/lib/postgresql/data
     restart: always
 
@@ -20,8 +20,9 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=postgresql://postgres:123456@db:5432/manajemen_rtrw
-      - JWT_SECRET=rahasia_super
+      - DATABASE_URL=postgresql://postgres:karawang3@db:5432/manajemen_rtrw2
+      - JWT_SECRET=supersecret123
+      - PORT=5000
     ports:
       - "5000:5000"
     volumes:
