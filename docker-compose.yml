@@ -5,7 +5,7 @@ services:
     container_name: db_rtrw
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: karawang3
+      POSTGRES_PASSWORD: rtrw
       POSTGRES_DB: manajemen_rtrw2
     ports:
       - "5432:5432"
@@ -20,7 +20,7 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=postgresql://postgres:karawang3@db:5432/manajemen_rtrw2
+      - DATABASE_URL=postgresql://postgres:rtrw@db:5432/manajemen_rtrw2
       - JWT_SECRET=supersecret123
       - PORT=5000
     ports:
