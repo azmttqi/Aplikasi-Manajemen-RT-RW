@@ -1,5 +1,7 @@
+// main.dart
+
 import 'package:flutter/material.dart';
-import './screens/auth/splash_screen.dart'; 
+import 'screens/auth/splash_screen.dart'; 
 
 void main() {
   runApp(const MyApp());
@@ -14,9 +16,7 @@ class MyApp extends StatelessWidget {
       title: 'Manajemen RT/RW',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        // Atur warna background default aplikasi
-        scaffoldBackgroundColor: const Color(0xFFFAF9F6), // Warna krem muda
-        // Atur tema untuk input field
+        scaffoldBackgroundColor: const Color(0xFFFAF9F6), 
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
@@ -34,7 +34,6 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      // Mulai aplikasi dari SplashScreen
       home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
     );

@@ -1,6 +1,8 @@
-import 'dart:async'; // Import untuk Timer
+// screens/auth/splash_screen.dart
+
 import 'package:flutter/material.dart';
-import './login_page.dart';
+// Asumsi path ke login page adalah: lib/screens/auth/login_page.dart
+import 'login_page.dart'; // Jika login_page.dart berada di folder yang sama
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,30 +15,42 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Pindah ke LoginScreen setelah 3 detik
-    Timer(
-      const Duration(seconds: 3),
-      () => Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginPage()), 
-      ),
-    );
+    
+    // 🚀 LOGIKA NAVIGASI: Pindah ke LoginPage setelah 3 detik
+    Future.delayed(const Duration(seconds: 3), () {
+      // Menggunakan pushReplacement untuk transisi yang bersih
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const LoginPage()), // LoginPage() adalah tujuan
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... (Konten SplashScreen tetap sama)
     return Scaffold(
-      // Tidak perlu AppBar atau BottomNavigationBar
+      backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // GANTI INI DENGAN LOGO ANDA
-            // Gunakan Image.asset('assets/images/logo_icon.png') jika punya file
-            Icon(
-              Icons.home_work_rounded, // Placeholder icon
-              size: 100, // Ukuran lebih besar untuk splash
-              color: Colors.green[800],
+            const Icon(
+              Icons.home_work,
+              color: Color(0xFF4CAF50), 
+              size: 80,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Manajemen RT/RW',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.green[800],
+              ),
+            ),
+            const SizedBox(height: 50),
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
             ),
           ],
         ),
