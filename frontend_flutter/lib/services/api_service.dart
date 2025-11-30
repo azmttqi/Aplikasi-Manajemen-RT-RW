@@ -2,10 +2,76 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = "http://localhost:5000/api";
+  static const String baseUrl = "http://localhost:5000/api/auth";
 
   static String? _token; // Token JWT disimpan di sini sementara
 
+// === FUNGSI REGISTER UPDATE ===
+  static Future<Map<String, dynamic>> register({
+    required String role, 
+    required String namaLengkap,
+    required String email,
+    required String username,
+    required String password,
+    
+    // Parameter Tambahan (Opsional, tergantung Role)
+    String? nik,
+    String? noKk,
+    String? tanggalLahir, // Format YYYY-MM-DD
+    String? nomorWilayah, // Nomor RW atau RT (misal "05")
+    String? alamatWilayah, 
+    String? kodeWilayahBaru, // Kode yang DI-GENERATE (untuk RW/RT baru)
+    String? kodeInduk, // Kode Verifikasi (RW Induk atau RT Induk)
+  }) async {
+    try {
+      String endpoint = "";
+      if (role == 'RW') endpoint = "/register-rw";
+      else if (role == 'RT') endpoint = "/register-rt";
+      else if (role == 'Warga') endpoint = "/register-warga";
+      
+      final url = Uri.parse("$baseUrl$endpoint");
+
+      // Mapping data ke JSON Backend
+      final Map<String, dynamic> bodyData = {
+        "nama_lengkap": namaLengkap,
+        "email": email,
+        "username": username,
+        "password": password,
+        
+        // Field tambahan (akan null jika tidak diisi)
+        "nik": nik,
+        "no_kk": noKk,
+        "tanggal_lahir": tanggalLahir,
+        
+        // Wilayah
+        "nomor_rw": role == 'RW' ? nomorWilayah : null,
+        "nomor_rt": role == 'RT' ? nomorWilayah : null,
+        "alamat": alamatWilayah,
+        "kode_wilayah_baru": kodeWilayahBaru, // Kode Hasil Generate
+
+        // Validasi Induk
+        "kode_rw_induk": role == 'RT' ? kodeInduk : null,
+        "kode_rt_induk": role == 'Warga' ? kodeInduk : null,
+      };
+
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(bodyData),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        return { "success": true, "message": data['message'] };
+      } else {
+        return { "success": false, "message": data['message'] ?? "Registrasi gagal" };
+      }
+    } catch (e) {
+      return {"success": false, "message": "Koneksi Error: $e"};
+    }
+  }
+  
   // Simpan token setelah login
   static void setToken(String token) {
     _token = token;
@@ -13,43 +79,47 @@ class ApiService {
 
   static String? get token => _token;
 
-  // === LOGIN (email atau username lewat "identifier") ===
-  static Future<Map<String, dynamic>> login(
-      String identifier, String password) async {
+// === LOGIN (VERSI PERBAIKAN) ===
+  static Future<Map<String, dynamic>> login(String identifier, String password) async {
     try {
       final response = await http.post(
-        Uri.parse("$baseUrl/auth/login"),
+        Uri.parse("$baseUrl/login"), // Pastikan ini benar
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "identifier": identifier, // <- backend terima identifier
+          "identifier": identifier,
           "password": password,
         }),
       );
 
+      print("🔹 Response Status: ${response.statusCode}"); // Debugging
+      print("🔹 Response Body: ${response.body}"); // Debugging (Cek isinya di terminal)
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
-        // Simpan token
         setToken(data['token']);
-
-        // Ambil user dan id_role dari response backend
+        
         final user = data['user'];
-        final int roleId = user['id_role'];
+        
+        // --- PERBAIKAN DI SINI ---
+        // Kita coba ambil 'id_role' ATAU 'role'. Jika null, default ke 0.
+        // Kita juga pastikan dia dikonversi jadi int.
+        int roleId = 0;
+        if (user['id_role'] != null) {
+          roleId = int.parse(user['id_role'].toString());
+        } else if (user['role'] != null) {
+          roleId = int.parse(user['role'].toString());
+        }
 
-        // Mapping id_role -> nama peran
+        print("🔹 Role ID yang terbaca: $roleId"); 
+
         String roleName;
+        // Pastikan ID ini sesuai dengan database kamu
+        // 1 = RW, 2 = RT, 3 = Warga (Sesuaikan dengan isi tabel roles)
         switch (roleId) {
-          case 1:
-            roleName = "RW";
-            break;
-          case 2:
-            roleName = "RT";
-            break;
-          case 3:
-            roleName = "Warga";
-            break;
-          default:
-            roleName = "unknown";
+          case 1: roleName = "RW"; break; 
+          case 2: roleName = "RT"; break;
+          case 3: roleName = "Warga"; break;
+          default: roleName = "unknown";
         }
 
         return {
@@ -66,10 +136,11 @@ class ApiService {
         };
       }
     } catch (e) {
+      print("🔥 Error Login: $e");
       return {"success": false, "message": "Terjadi kesalahan: $e"};
     }
   }
-
+  
   // === DASHBOARD RW ===
   static Future<Map<String, dynamic>> getSuperAdminDashboard() async {
     try {

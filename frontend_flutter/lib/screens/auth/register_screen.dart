@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
-import '../rw/register_rw_screen.dart'; // Import file baru Anda
+
+// --- IMPORT FILE HALAMAN REGISTRASI PERAN ---
+// Pastikan path folder-nya sesuai dengan project kamu
+import '../rw/register_rw_screen.dart'; 
+import '../rt/register_rt_screen.dart'; 
+import '../warga/register_warga_screen.dart';
 
 // Enum untuk melacak peran yang dipilih
 enum UserRole { rw, rt, warga }
@@ -18,7 +23,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Footer yang sama dengan login
+      backgroundColor: const Color(0xFFFFFBE6), // Background cream
+      
+      // Footer Hak Cipta
       bottomNavigationBar: Container(
         height: 50,
         color: const Color(0xFF678267), // Warna hijau footer
@@ -32,6 +39,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
+      
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -41,43 +49,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               const SizedBox(height: 60),
 
-              // --- 1. Logo (sama seperti login) ---
+              // --- 1. Logo ---
               _buildLogoSection(),
 
               const SizedBox(height: 40),
 
               // --- 2. Pilihan Peran ---
+              
+              // KARTU RW
               _buildRoleCard(
                 role: UserRole.rw,
                 title: "Daftar RW Baru",
                 subtitle: "Dapatkan kemudahan mengelola administrasi kependudukan",
               ),
-              ElevatedButton(
-               // ... (style)
-               onPressed: _selectedRole == null
-                ? null
-                : () {
-                     // --- UBAH DI SINI ---
-                    if (_selectedRole == UserRole.rw) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const RegisterRwScreen()),
-                    );
-                  } else if (_selectedRole == UserRole.rt) {
-                    // TODO: Navigasi ke halaman daftar RT
-                  } else if (_selectedRole == UserRole.warga) {
-                   // TODO: Navigasi ke halaman daftar Warga
-          }
-        },
-  child: const Text("Lanjut"),
-),
               const SizedBox(height: 16),
+              
+              // KARTU RT
               _buildRoleCard(
                 role: UserRole.rt,
                 title: "Daftar RT Baru",
                 subtitle: "Dapatkan kemudahan mengelola administrasi kependudukan",
               ),
               const SizedBox(height: 16),
+              
+              // KARTU WARGA
               _buildRoleCard(
                 role: UserRole.warga,
                 title: "Daftar Warga Baru",
@@ -86,7 +81,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 32),
 
-              // --- 3. Tombol Lanjut ---
+              // --- 3. Tombol Lanjut (NAVIGASI UTAMA) ---
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
@@ -95,19 +90,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.0),
                   ),
-                  // Tombol akan nonaktif jika _selectedRole masih null
+                  // Tombol mati (abu-abu) jika belum pilih peran
                   disabledBackgroundColor: Colors.grey[400],
                 ),
-                // Logika utama:
-                // Jika _selectedRole adalah null, onPressed juga null (tombol mati)
-                // Jika sudah dipilih, tombol akan aktif
+                
+                // LOGIKA NAVIGASI DI SINI 👇
                 onPressed: _selectedRole == null
                     ? null
                     : () {
-                        // TODO: Navigasi ke halaman detail pendaftaran
-                        // Anda bisa cek perannya di sini:
-                        // if (_selectedRole == UserRole.rt) { ... }
-                        print("Peran yang dipilih: $_selectedRole");
+                        if (_selectedRole == UserRole.rw) {
+                          // Ke Halaman RW
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const RegisterRwScreen()),
+                          );
+                        } else if (_selectedRole == UserRole.rt) {
+                          // Ke Halaman RT
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const RegisterRtScreen()),
+                          );
+                        } else if (_selectedRole == UserRole.warga) {
+                          // Ke Halaman Warga (Step 1)
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const RegisterWargaStep1()),
+                          );
+                        }
                       },
                 child: const Text(
                   "Lanjut",
@@ -184,6 +193,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ],
               ),
             ),
+            // Tanda Centang jika dipilih
+            if (isSelected)
+              const Icon(Icons.check_circle, color: Colors.blue),
           ],
         ),
       ),
@@ -216,7 +228,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Widget untuk Logo (bisa di-copas dari login_page.dart)
+  // Widget untuk Logo
   Widget _buildLogoSection() {
     return Column(
       children: [
@@ -241,7 +253,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             color: Colors.grey[700],
           ),
         ),
-      ],
+      ]
     );
   }
 }
