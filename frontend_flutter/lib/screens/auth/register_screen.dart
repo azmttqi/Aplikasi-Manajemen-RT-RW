@@ -52,25 +52,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 title: "Daftar RW Baru",
                 subtitle: "Dapatkan kemudahan mengelola administrasi kependudukan",
               ),
-              ElevatedButton(
-               // ... (style)
-               onPressed: _selectedRole == null
-                ? null
-                : () {
-                     // --- UBAH DI SINI ---
-                    if (_selectedRole == UserRole.rw) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const RegisterRwScreen()),
-                    );
-                  } else if (_selectedRole == UserRole.rt) {
-                    // TODO: Navigasi ke halaman daftar RT
-                  } else if (_selectedRole == UserRole.warga) {
-                   // TODO: Navigasi ke halaman daftar Warga
-          }
-        },
-  child: const Text("Lanjut"),
-),
               const SizedBox(height: 16),
               _buildRoleCard(
                 role: UserRole.rt,
