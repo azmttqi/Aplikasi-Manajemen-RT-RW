@@ -271,3 +271,98 @@ export const getDashboardRW = async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil dashboard RW", error: err.message });
   }
 };
+
+/* ============================================================
+   🔍 GET DATA LIST (PINTAR MEMBEDAKAN ROLE)
+   - Jika RW login -> Tampilkan Daftar Ketua RT
+   - Jika RT login -> Tampilkan Daftar Warga
+============================================================ */
+export const getDataList = async (req, res) => {
+  try {
+    const userId = req.user.id_pengguna; 
+    const { search } = req.query; // Ambil query search dari URL
+    
+    let query = "";
+    let params = [];
+
+    // ==================================================
+    // CEK 1: APAKAH YANG LOGIN ADALAH RW?
+    // ==================================================
+    const rwCheck = await pool.query("SELECT id_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
+    
+    if (rwCheck.rows.length > 0) {
+      // --- LOGIKA RW (Hanya melihat Daftar RT) ---
+      const idRw = rwCheck.rows[0].id_rw;
+      
+      // Ambil data RT: Nomor RT, Alamat, dan Nama Akun Ketua RT-nya
+      query = `
+        SELECT 
+            rt.id_rt, 
+            rt.kode_rt AS nomor_rt,       
+            rt.alamat_rt,
+            u.username AS nama_ketua_rt, 
+            u.email,
+            u.status_verifikasi_id
+        FROM wilayah_rt rt
+        LEFT JOIN pengguna u ON rt.id_pengguna = u.id_pengguna
+        WHERE rt.id_rw = $1
+      `;
+      params.push(idRw);
+
+      // Filter Pencarian (Nama Ketua RT atau Nomor RT)
+      if (search) {
+        query += ` AND (u.nama_lengkap ILIKE $2 OR rt.kode_rt ILIKE $2)`;
+        params.push(`%${search}%`);
+      }
+      
+      query += " ORDER BY rt.kode_rt ASC"; // Urutkan berdasarkan nomor RT
+    } 
+    
+    // ==================================================
+    // CEK 2: APAKAH YANG LOGIN ADALAH RT?
+    // ==================================================
+    else {
+      const rtCheck = await pool.query("SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
+      
+      if (rtCheck.rows.length > 0) {
+        // --- LOGIKA RT (Melihat Daftar Warga) ---
+        const idRt = rtCheck.rows[0].id_rt;
+        
+        query = `
+          SELECT 
+            w.id_warga, 
+            w.nama_lengkap, 
+            w.nik, 
+            w.no_kk, 
+            w.status_verifikasi 
+          FROM warga w
+          WHERE w.id_rt = $1
+        `;
+        params.push(idRt);
+
+        // Filter Pencarian (Nama Warga)
+        if (search) {
+          query += ` AND w.nama_lengkap ILIKE $2`;
+          params.push(`%${search}%`);
+        }
+
+        query += " ORDER BY w.id_warga DESC";
+      } else {
+        return res.status(403).json({ message: "Akses ditolak. Anda bukan pengurus wilayah." });
+      }
+    }
+
+    // Eksekusi Query
+    const result = await pool.query(query, params);
+
+    res.json({
+      success: true,
+      role: rwCheck.rows.length > 0 ? 'RW' : 'RT', // Info tambahan buat Frontend
+      data: result.rows
+    });
+
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: "Server Error" });
+  }
+};

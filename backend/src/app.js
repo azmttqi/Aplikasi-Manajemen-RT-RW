@@ -11,6 +11,7 @@ import pool from './config/db.js';
 // Import Routes
 import authRoutes from './routes/auth.js';
 import wargaRoutes from './routes/warga.js'; // Pastikan file ini ada, jika belum ada bisa dikomentari dulu
+import dashboardRoutes from "./routes/dashboard.js";
 
 // Import Middleware
 import { verifyToken } from './middleware/authMiddleware.js';
@@ -39,7 +40,7 @@ app.use('/api/auth', authRoutes);
 // Akses: http://localhost:5000/api/warga/...
 // Jika file warga.js belum siap, baris ini bisa dikomentari dulu:
 app.use('/api/warga', wargaRoutes);
-
+app.use("/api/dashboard", dashboardRoutes);
 // Route Test Token (Hanya bisa diakses jika punya token login)
 app.get('/api/protected', verifyToken, (req, res) => {
   res.json({

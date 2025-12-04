@@ -1,29 +1,52 @@
-    import express from "express";
-    import {
+import express from "express";
+import {
+    // Controller Lama
     addWarga,
-    getAllWarga,
     updateWarga,
     deleteWarga,
     getPendingWargaForRT,
-    verifikasiWarga
-    } from "../controllers/wargaController.js";
-    import { verifyToken } from "../middleware/authMiddleware.js";
-    import { ensureRoleRT } from "../middleware/roleMiddleware.js";
-    import { getAllWargaByRW, getStatistikWargaByRW } from "../controllers/wargaController.js";
-    import { ensureRoleRW } from "../middleware/roleMiddleware.js";
-    import { getDashboardRW } from "../controllers/wargaController.js";
+    verifikasiWarga,
+    getAllWargaByRW,
+    getStatistikWargaByRW,
+    getDashboardRW,
+    
+    // Controller Baru (PENTING!)
+    getDataList 
+} from "../controllers/wargaController.js";
 
-    const router = express.Router();
+import { verifyToken } from "../middleware/authMiddleware.js";
+import { ensureRoleRT, ensureRoleRW } from "../middleware/roleMiddleware.js";
 
-    // routes utama
-    router.post("/", verifyToken, addWarga);
-    router.get("/", verifyToken, getAllWarga);
-    router.get("/pending", verifyToken, ensureRoleRT, getPendingWargaForRT);
-    router.put("/verifikasi", verifyToken, ensureRoleRT, verifikasiWarga);
-    router.put("/:id", verifyToken, updateWarga);
-    router.delete("/:id", verifyToken, deleteWarga);
-    router.get("/rw/warga", verifyToken, ensureRoleRW, getAllWargaByRW);
-    router.get("/rw/statistik", verifyToken, ensureRoleRW, getStatistikWargaByRW);
-    router.get("/rw/dashboard", verifyToken, ensureRoleRW, getDashboardRW);
+const router = express.Router();
 
-    export default router;
+// =================================================================
+// 🟢 ROUTES UTAMA
+// =================================================================
+
+// 1. GET "/" -> Ini yang dipakai halaman Pencarian Akun
+// Menggunakan getDataList agar otomatis mendeteksi role (RW lihat RT, RT lihat Warga)
+router.get("/", verifyToken, getDataList);
+
+// 2. POST "/" -> Tambah Warga
+router.post("/", verifyToken, addWarga);
+
+
+// =================================================================
+// 🟠 ROUTES KHUSUS RT
+// =================================================================
+router.get("/pending", verifyToken, ensureRoleRT, getPendingWargaForRT);
+router.put("/verifikasi", verifyToken, ensureRoleRT, verifikasiWarga);
+
+// Update & Delete Warga (Biasanya RT)
+router.put("/:id", verifyToken, updateWarga); // Menggunakan :id (bukan nik) jika query by ID
+router.delete("/:id", verifyToken, deleteWarga);
+
+
+// =================================================================
+// 🔵 ROUTES KHUSUS RW
+// =================================================================
+router.get("/rw/warga", verifyToken, ensureRoleRW, getAllWargaByRW);
+router.get("/rw/statistik", verifyToken, ensureRoleRW, getStatistikWargaByRW);
+router.get("/rw/dashboard", verifyToken, ensureRoleRW, getDashboardRW);
+
+export default router;

@@ -140,7 +140,29 @@ class ApiService {
       return {"success": false, "message": "Terjadi kesalahan: $e"};
     }
   }
-  
+
+  // === AMBIL DATA DASHBOARD ===
+  static Future<Map<String, dynamic>> getDashboardStats() async {
+    try {
+      final response = await http.get(
+        Uri.parse("http://localhost:5000/api/dashboard/stats"), 
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_token", // <--- PENTING: Kirim Token
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        // Jika token expired (401/403), bisa handle logout di sini
+        return {"success": false, "message": "Gagal load data: ${response.statusCode}"};
+      }
+    } catch (e) {
+      return {"success": false, "message": "Error: $e"};
+    }
+  }
+
   // === DASHBOARD RW ===
   static Future<Map<String, dynamic>> getSuperAdminDashboard() async {
     try {
@@ -163,6 +185,38 @@ class ApiService {
       }
     } catch (e) {
       return {"success": false, "message": "Terjadi kesalahan: $e"};
+    }
+  }
+
+// === FUNGSI BARU: AMBIL LIST WARGA / RT ===
+  // Tambahkan kode ini di dalam class ApiService
+  
+  static Future<List<dynamic>> getWargaList({String query = ""}) async {
+    try {
+      // Pastikan URL ini benar. 
+      // Kalau baseUrl kamu ".../api/auth", kita harus mundur ke ".../api/warga"
+      // Cara paling aman tulis manual saja:
+      final url = Uri.parse("http://localhost:5000/api/warga?search=$query");
+      // (Ganti localhost jadi 10.0.2.2 jika pakai Emulator Android)
+
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_token", // PENTING: Token login harus dikirim
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Backend mengirim format: { success: true, role: 'RW', data: [...] }
+        return data['data']; 
+      } else {
+        throw Exception("Gagal mengambil data: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error getWargaList: $e");
+      rethrow; 
     }
   }
 }

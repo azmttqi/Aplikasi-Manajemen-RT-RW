@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../rw/super_admin_dashboard.dart';
 import '../rt/dashboard_screen.dart';
+import '../rw/main_screen.dart';
 
 // TODO: import dashboard RT / Warga kalau sudah ada
 
@@ -55,7 +56,7 @@ class _LoginPageState extends State<LoginPage> {
       if (role == "RW") {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => SuperAdminDashboard()),
+          MaterialPageRoute(builder: (_) => MainScreen()),
         );
       } else if (role == "RT") {
         // TODO: ganti dengan DashboardRT kalau sudah ada
