@@ -297,6 +297,8 @@ export const getDataList = async (req, res) => {
             rt.alamat_rt,
             u.username AS nama_ketua_rt, 
             u.email,
+            u.id_pengguna,
+            u.status_verifikasi_id,
             (SELECT COUNT(*) FROM warga w WHERE w.id_rt = rt.id_rt) AS jumlah_warga,
             (SELECT COUNT(DISTINCT no_kk) FROM warga w WHERE w.id_rt = rt.id_rt) AS jumlah_kk
         FROM wilayah_rt rt
@@ -399,5 +401,39 @@ export const getNotificationsRW = async (req, res) => {
   } catch (err) {
     console.error("Notif Error:", err.message);
     res.status(500).json({ message: "Gagal mengambil notifikasi" });
+  }
+};
+/* ============================================================
+   ✅ VERIFIKASI AKUN (Ubah Status jadi Disetujui)
+============================================================ */
+export const verifikasiAkun = async (req, res) => {
+  const { id } = req.params; // ID User yang mau diverifikasi (dikirim dari URL)
+
+  try {
+    // 1. Update status_verifikasi_id di tabel pengguna
+    // Asumsi: ID 2 = 'Disetujui' (Sesuai seed data Anda sebelumnya)
+    // Atau kita pakai subquery biar aman
+    const updateQuery = `
+      UPDATE pengguna 
+      SET status_verifikasi_id = (SELECT id FROM status_verifikasi WHERE nama = 'Disetujui' LIMIT 1)
+      WHERE id_pengguna = $1
+      RETURNING id_pengguna, email, status_verifikasi_id
+    `;
+
+    const result = await pool.query(updateQuery, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User tidak ditemukan" });
+    }
+
+    res.json({
+      success: true,
+      message: "Akun berhasil diverifikasi!",
+      data: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("Verifikasi Error:", err.message);
+    res.status(500).json({ message: "Gagal memverifikasi akun" });
   }
 };

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
-import '../auth/login_page.dart'; // Pastikan path ke Login Page benar
+import '../auth/login_page.dart';// Pastikan path ini benar sesuai struktur folder Anda
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,198 +10,301 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  // Variabel Data User
   String _nama = "Memuat...";
-  String _username = "..."; // Tambahan
-  String _nomorRw = "...";  // Tambahan
-  String _kodeUnik = "..."; // Tambahan 
-  
+  String _username = "-";
+  String _email = "-";
+  String _role = "-";
+  String _wilayah = "-";
+  String _kodeUnik = "-";
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _fetchProfile();
   }
 
-  void _loadProfile() async {
-    final result = await ApiService.getProfile();
-    
-    // Debugging: Cek apa isi result di terminal
-    print("Profil Result: $result"); 
-
-    if (mounted && result['success'] == true) {
-      setState(() {
-        final data = result['data'];
-        _nama = data['nama_lengkap'] ?? "Tanpa Nama";
-        _username = data['username'] ?? "user"; 
-        
-        // Pastikan key-nya sama dengan backend ('nomor_wilayah')
-        _nomorRw = data['nomor_wilayah'] ?? "Wilayah -";
-        _kodeUnik = data['kode_unik'] ?? "-";
-      });
+  // 1. Ambil Data Profil dari Backend
+  void _fetchProfile() async {
+    final result = await ApiService.getMe();
+    if (mounted) {
+      if (result != null) {
+        setState(() {
+          _nama = result['nama_lengkap'] ?? result['username'] ?? "User";
+          _username = result['username'] ?? "-";
+          _email = result['email'] ?? "-";
+          _role = result['role'] ?? "Warga";
+          _wilayah = result['nomor_wilayah'] ?? "-";
+          _kodeUnik = result['kode_unik'] ?? "-";
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  void _handleLogout() {
-    // 1. Panggil fungsi logout di service
-    ApiService.logout();
+  // 2. Fungsi Logout
+  void _handleLogout() async {
+    await ApiService.logout();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+        (route) => false,
+      );
+    }
+  }
 
-    // 2. Tendang ke halaman Login (Hapus semua history navigasi agar tidak bisa back)
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginPage()), 
-      (Route<dynamic> route) => false,
+  // 3. Fungsi Menampilkan Dialog Edit (Password / Info)
+  void _showUpdateDialog({required String type}) {
+    final TextEditingController currentPassController = TextEditingController();
+    final TextEditingController newValueController = TextEditingController();
+    
+    String title = type == 'password' ? "Ubah Kata Sandi" : "Ubah Data Akun";
+    String label = type == 'password' ? "Kata Sandi Baru" : "Email / Username Baru";
+    
+    // Jika edit info, isi otomatis dengan data saat ini
+    if (type == 'email') newValueController.text = _email;
+    if (type == 'username') newValueController.text = _username;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        bool isSubmitting = false;
+        
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("Demi keamanan, masukkan kata sandi lama Anda:", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 10),
+                  // Input Password Lama (Wajib)
+                  TextField(
+                    controller: currentPassController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: "Kata Sandi Lama",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  // Input Data Baru
+                  TextField(
+                    controller: newValueController,
+                    obscureText: type == 'password', // Jika ganti password, tutup teksnya
+                    decoration: InputDecoration(
+                      labelText: label,
+                      border: const OutlineInputBorder(),
+                      prefixIcon: Icon(type == 'password' ? Icons.vpn_key : Icons.edit),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (currentPassController.text.isEmpty || newValueController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Mohon isi semua kolom")));
+                            return;
+                          }
+
+                          setStateDialog(() => isSubmitting = true);
+
+                          // Siapkan data untuk dikirim
+                          String? newPass, newEmail, newUsername;
+                          if (type == 'password') newPass = newValueController.text;
+                          if (type == 'email') newEmail = newValueController.text;
+                          if (type == 'username') newUsername = newValueController.text;
+
+                          // PANGGIL API UPDATE
+                          final result = await ApiService.updateProfile(
+                            currentPassword: currentPassController.text,
+                            newPassword: newPass,
+                            newEmail: newEmail,
+                            newUsername: newUsername,
+                          );
+
+                          setStateDialog(() => isSubmitting = false);
+                          Navigator.pop(context); // Tutup Dialog
+
+                          // Tampilkan Hasil
+                          if (result['success']) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Berhasil diperbarui! ✅")));
+                            _fetchProfile(); // Refresh data di layar
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(result['message']), backgroundColor: Colors.red));
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  child: isSubmitting
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text("Simpan"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF6E6), // Warna Krem Background
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Profil Saya", style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 40), // Jarak aman status bar
-            const Text(
-              "Profil Saya",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-
-            // --- KARTU PROFIL UTAMA ---
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  )
-                ],
-              ),
-              child: Row(
-                children: [
-                  // Avatar Bulat Hitam (Sesuai Desain)
-                  const CircleAvatar(
-                    radius: 35,
-                    backgroundColor: Colors.black,
-                    child: Icon(Icons.person, size: 40, color: Colors.white),
+            // --- HEADER FOTO ---
+            const SizedBox(height: 10),
+            Stack(
+              children: [
+                const CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Color(0xFFE8F5E9),
+                  child: Icon(Icons.person, size: 60, color: Colors.green),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: () {
+                      // Fitur Ganti Foto (Nanti saja)
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                    ),
                   ),
-                  const SizedBox(width: 20),
-                  // Teks Nama & Role
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ...
-                      Text(
-                        _nama, // Nama Asli
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        "@$_username", // Username Asli (contoh: @bambang123)
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      Text(
-                        _nomorRw, // Nomor RW Asli (contoh: RW 009)
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                      ),
-                      // Badge Terverifikasi
-                      Row(
-                        children: const [
-                          Text("Terverifikasi", style: TextStyle(color: Colors.lightGreen, fontSize: 12)),
-                          SizedBox(width: 5),
-                          Icon(Icons.check_circle, color: Colors.lightGreen, size: 14),
-                        ],
-                      )
-                    ],
-                  )
-                ],
-              ),
+                )
+              ],
             ),
-
-            const SizedBox(height: 20),
-
-            // --- MENU PENGATURAN 1 ---
-            _buildMenuCard([
-              _buildMenuItem(Icons.lock_outline, "Ubah Kata Sandi"),
-              const Divider(height: 1),
-              _buildMenuItem(Icons.info_outline, "Ubah No. Handphone & Email"),
-            ]),
-
-            const SizedBox(height: 20),
-
-            // --- MENU PENGATURAN 2 ---
-            _buildMenuCard([
-              _buildMenuItem(Icons.description_outlined, "Syarat & Ketentuan"),
-              const Divider(height: 1),
-              _buildMenuItem(Icons.help_outline, "Alamat/ Wilayah"),
-            ]),
-
-            const SizedBox(height: 20),
-
-            // --- INFO & KODE UNIK ---
-            _buildMenuCard([
-              _buildMenuItem(Icons.info, "Informasi dan Dukungan"),
-              const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.all(15.0),
-                    child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                  Text("Kode Unik: $_kodeUnik", style: const TextStyle(fontWeight: FontWeight.bold)), // Kode Asli
-                ],
-              ),
-            ),
-          ]),
-
+            const SizedBox(height: 15),
+            Text(_nama, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(_role, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
+            
             const SizedBox(height: 30),
 
-            // --- TOMBOL LOGOUT ---
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _handleLogout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF2D55), // Warna Merah Pink sesuai desain
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text("Log Out", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            // --- INFO WILAYAH (Card) ---
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  _buildInfoRow(Icons.location_on, "Wilayah", _wilayah),
+                  const Divider(),
+                  _buildInfoRow(Icons.vpn_key, "Kode Unik", _kodeUnik),
+                ],
               ),
             ),
+
+            const SizedBox(height: 20),
+
+            // --- MENU OPSI ---
+            // 1. Ubah Username
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.person_outline, color: Colors.blue),
+              ),
+              title: const Text("Username"),
+              subtitle: Text(_username),
+              trailing: const Icon(Icons.edit, size: 16, color: Colors.grey),
+              onTap: () => _showUpdateDialog(type: 'username'), // Aksi Ubah Username
+            ),
             
-            const SizedBox(height: 30), // Spasi bawah
+            // 2. Ubah Email
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.purple[50], borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.email_outlined, color: Colors.purple),
+              ),
+              title: const Text("Email"),
+              subtitle: Text(_email),
+              trailing: const Icon(Icons.edit, size: 16, color: Colors.grey),
+              onTap: () => _showUpdateDialog(type: 'email'), // Aksi Ubah Email
+            ),
+
+            // 3. Ubah Password
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.lock_outline, color: Colors.orange),
+              ),
+              title: const Text("Kata Sandi"),
+              subtitle: const Text("Ketuk untuk mengubah"),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+              onTap: () => _showUpdateDialog(type: 'password'), // Aksi Ubah Password
+            ),
+
+            const Divider(height: 30),
+
+            // 4. Logout
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.logout, color: Colors.red),
+              ),
+              title: const Text("Keluar Akun", style: TextStyle(color: Colors.red)),
+              onTap: _handleLogout,
+            ),
           ],
         ),
       ),
     );
   }
 
-  // Widget Pembantu untuk Kartu Menu Putih
-  Widget _buildMenuCard(List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 2))
+  // Widget kecil untuk baris info
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.green[700]),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
         ],
       ),
-      child: Column(children: children),
-    );
-  }
-
-  // Widget Pembantu untuk Item Menu
-  Widget _buildMenuItem(IconData icon, String title) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.grey),
-      title: Text(title, style: const TextStyle(fontSize: 14)),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-      onTap: () {
-        // Logika pindah halaman nanti di sini
-      },
     );
   }
 }

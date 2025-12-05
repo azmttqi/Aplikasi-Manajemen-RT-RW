@@ -12,7 +12,8 @@ import {
     
     // Controller Baru (PENTING!)
     getDataList,
-    getNotificationsRW 
+    getNotificationsRW,
+    verifikasiAkun 
 } from "../controllers/wargaController.js";
 
 import { verifyToken } from "../middleware/authMiddleware.js";
@@ -52,5 +53,6 @@ router.get("/rw/dashboard", verifyToken, ensureRoleRW, getDashboardRW);
 
 // Route Notifikasi
 router.get("/rw/notifications", verifyToken, ensureRoleRW, getNotificationsRW);
-
+// Route Verifikasi (PUT karena mengupdate data)
+router.put("/verify/:id", verifyToken, ensureRoleRW, verifikasiAkun);
 export default router;

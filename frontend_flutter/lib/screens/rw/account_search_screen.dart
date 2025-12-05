@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async'; // Untuk Timer (Debounce search)
 import '../../services/api_service.dart'; // Import Service API
-import 'detailAkunPage.dart'; 
+import 'DetailAkunPage.dart'; 
 
 class AccountSearchScreen extends StatefulWidget {
   const AccountSearchScreen({super.key});
@@ -71,23 +71,28 @@ class _AccountSearchScreenState extends State<AccountSearchScreen> {
   // Navigasi ke Detail
   // Di dalam class _AccountSearchScreenState ...
 
-  void _navigateToDetail(Map<String, dynamic> data) {
+void _navigateToDetail(Map<String, dynamic> data) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => DetailAkunPage(
-          // Kirim data yang sesuai
-          nik: data['email'] ?? '-', // Tampilkan Email karena RT belum tentu punya NIK di list ini
-          nama: data['nama_ketua_rt'] ?? 'Belum ada Ketua',
+          idUser: data['id_pengguna'] ?? 0,
+          // Pastikan kirim status verifikasi yang benar
+          isVerified: (data['status_verifikasi_id'] == 2),
           
-          // Pastikan mengambil 'nomor_rt' yang sudah kita perbaiki di backend
-          rt: data['nomor_rt'] ?? '-', 
-          
-          // --- JUDUL YANG BENAR ---
-          judulHalaman: "Detail Akun RT", 
+          nik: data['email'] ?? '-',
+          nama: data['nama_ketua_rt'] ?? data['username'] ?? 'Belum ada Ketua',
+          rt: data['nomor_rt'] ?? '-',
+          judulHalaman: "Detail Akun RT",
+          labelInfo: "Email Ketua RT",
         ),
       ),
-    );
+    ).then((_) {
+      // --- BARIS AJAIB INI ---
+      // Saat kembali dari halaman detail, panggil data ulang dari backend
+      print("Kembali dari detail, refresh data...");
+      _fetchData(); 
+    });
   }
 
 @override
@@ -185,22 +190,40 @@ class _AccountSearchScreenState extends State<AccountSearchScreen> {
     );
   }
 
-// Widget Kartu RT
-// Widget Kartu RT
+  // Widget Kartu RT
   Widget _buildRtCard(Map<String, dynamic> data, int index) {
+
+    // --- TAMBAHKAN DEBUGGING INI ---
+    print("DEBUG DATA RT $index: ID User=${data['id_pengguna']}, Status=${data['status_verifikasi_id']}");
     
-    // 1. Ambil Nomor RT (Coba 'nomor_rt', kalau null coba 'kode_rt')
+    // 1. Ambil Data
     final String nomorRt = data['nomor_rt'] ?? data['kode_rt'] ?? '-';
+    final String namaKetua = data['nama_ketua_rt'] ?? data['username'] ?? 'Belum ada Ketua';
     
-    // 2. Ambil Nama Ketua
-    // Backend mungkin mengirim 'nama_ketua_rt', 'username', atau 'nama_lengkap'
-    final String namaKetua = data['nama_ketua_rt'] ?? 
-                             data['username'] ?? 
-                             data['nama_lengkap'] ?? 
-                             'Belum ada Ketua';
+    // 2. CEK STATUS YANG BENAR (Berdasarkan ID Verifikasi dari Database)
+    // Asumsi di database: 1 = Pending, 2 = Disetujui/Aktif, 3 = Ditolak
+    // (Sesuaikan dengan isi tabel status_verifikasi Anda)
+    final int statusId = data['status_verifikasi_id'] ?? 1; // Default 1 (Pending)
     
-    // 3. Cek Status (Aktif jika nama ketuanya ada dan valid)
-    final bool isActive = (namaKetua != 'Belum ada Ketua' && namaKetua.isNotEmpty); 
+    final bool isVerified = (statusId == 2); // Hanya aktif jika ID-nya 2
+    final bool hasUser = (namaKetua != 'Belum ada Ketua'); // Cek apakah ada user yg daftar
+
+    // Tentukan Teks & Warna Status
+    String statusText = "Kosong";
+    Color statusColor = Colors.grey;
+    Color statusBgColor = Colors.grey[200]!;
+
+    if (hasUser) {
+      if (isVerified) {
+        statusText = "Aktif";
+        statusColor = Colors.green[800]!;
+        statusBgColor = Colors.green[100]!;
+      } else {
+        statusText = "Pending"; // Ini yang akan muncul jika belum diverifikasi
+        statusColor = Colors.orange[800]!;
+        statusBgColor = Colors.orange[100]!;
+      }
+    }
 
     return Card(
       elevation: 2,
@@ -212,16 +235,16 @@ class _AccountSearchScreenState extends State<AccountSearchScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // Icon Status
+              // Icon Rumah
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isActive ? Colors.blue[50] : Colors.red[50],
+                  color: isVerified ? Colors.blue[50] : Colors.orange[50], // Biru jika aktif, Orange jika pending
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   Icons.home_work,
-                  color: isActive ? Colors.blue : Colors.red,
+                  color: isVerified ? Colors.blue : Colors.orange,
                   size: 24,
                 ),
               ),
@@ -238,30 +261,30 @@ class _AccountSearchScreenState extends State<AccountSearchScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      isActive ? namaKetua : "Menunggu Registrasi...",
+                      hasUser ? namaKetua : "Belum ada pendaftar",
                       style: TextStyle(
                         fontSize: 14,
-                        color: isActive ? Colors.black87 : Colors.red,
-                        fontStyle: isActive ? FontStyle.normal : FontStyle.italic,
+                        color: hasUser ? Colors.black87 : Colors.grey,
+                        fontWeight: hasUser ? FontWeight.w500 : FontWeight.normal,
                       ),
                     ),
                   ],
                 ),
               ),
 
-              // Chip Status
+              // Chip Status (Pojok Kanan)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isActive ? Colors.green[100] : Colors.orange[100],
+                  color: statusBgColor,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  isActive ? "Aktif" : "Pending",
+                  statusText,
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: isActive ? Colors.green[800] : Colors.orange[800],
+                    color: statusColor,
                   ),
                 ),
               ),

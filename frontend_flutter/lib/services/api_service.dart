@@ -141,6 +141,30 @@ class ApiService {
     }
   }
 
+  // === AMBIL DATA PROFIL (GET ME) ===
+  static Future<Map<String, dynamic>?> getMe() async {
+    try {
+      final response = await http.get(
+        // Sesuaikan IP: Ganti localhost dengan 10.0.2.2 jika pakai Emulator Android
+        Uri.parse("http://localhost:5000/api/auth/me"), 
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_token", // Kirim token yang disimpan saat login
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data']; // Kembalikan objek data user
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print("Error getMe: $e");
+      return null;
+    }
+  }
+
   // === AMBIL DATA DASHBOARD ===
   static Future<Map<String, dynamic>> getDashboardStats() async {
     try {
@@ -244,7 +268,7 @@ class ApiService {
   }
 
   // === LOGOUT (HAPUS TOKEN) ===
-  static void logout() {
+  static Future<void> logout() async {
     _token = null; // Hapus token dari memori
     // Jika nanti Anda pakai SharedPreferences, hapus juga dari sana
   }
@@ -271,4 +295,61 @@ class ApiService {
       return [];
     }
   }
-}
+
+  // === VERIFIKASI AKUN (RW ACC RT) ===
+  static Future<bool> verifyAccount(int idUser) async {
+    try {
+      final response = await http.put(
+        Uri.parse("http://localhost:5000/api/warga/verify/$idUser"), // Ganti localhost jika perlu
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_token",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("Gagal verifikasi: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Error verify: $e");
+      return false;
+    }
+  }
+
+// === UPDATE PROFIL (Password / Email) ===
+  static Future<Map<String, dynamic>> updateProfile({
+    required String currentPassword,
+    String? newEmail,
+    String? newUsername,
+    String? newPassword,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse("http://localhost:5000/api/auth/update"), // Sesuaikan localhost/10.0.2.2
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_token",
+        },
+        body: jsonEncode({
+          "currentPassword": currentPassword, // Wajib
+          "email": newEmail,
+          "username": newUsername,
+          "newPassword": newPassword, // Opsional
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message']};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Gagal update'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Terjadi kesalahan koneksi'};
+    }
+  }
+} 

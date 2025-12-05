@@ -253,3 +253,67 @@ export const getMe = async (req, res) => {
     res.status(500).json({ message: "Gagal memuat profil" });
   }
 };
+
+/* ============================================================
+   ⚙️ UPDATE PROFIL (FINAL FIX: password_hash)
+============================================================ */
+export const updateProfile = async (req, res) => {
+  const { email, username, currentPassword, newPassword } = req.body;
+  const userId = req.user.id_pengguna;
+
+  console.log("➡️ Request Update Profil dari User ID:", userId);
+
+  try {
+    // 1. Ambil data user
+    const userResult = await pool.query("SELECT * FROM pengguna WHERE id_pengguna = $1", [userId]);
+    const user = userResult.rows[0];
+
+    if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
+
+    // --- FIX: Gunakan kolom 'password_hash' ---
+    const dbPassword = user.password_hash; 
+
+    // 2. LOGIKA CEK PASSWORD
+    if (dbPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: "Password lama wajib diisi!" });
+      }
+      
+      const isMatch = await bcrypt.compare(currentPassword, dbPassword);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Password lama salah!" });
+      }
+    } else {
+      console.log("⚠️ Peringatan: User ini kolom password_hash kosong. Mengizinkan reset.");
+    }
+
+    // 3. Siapkan Password Baru
+    let finalPassword = dbPassword; // Default: pakai yg lama
+    
+    if (newPassword && newPassword.trim() !== "") {
+      const salt = await bcrypt.genSalt(10);
+      finalPassword = await bcrypt.hash(newPassword, salt);
+    } 
+    else if (!dbPassword && (!newPassword || newPassword.trim() === "")) {
+      return res.status(400).json({ message: "Akun Anda belum ada password. Mohon isi password baru!" });
+    }
+
+    // 4. Update Database (Ganti kolom 'password_hash')
+    await pool.query(
+      `UPDATE pengguna 
+       SET email = $1, username = $2, password_hash = $3 
+       WHERE id_pengguna = $4`,
+      [email || user.email, username || user.username, finalPassword, userId]
+    );
+
+    console.log("✅ Profil Berhasil Diupdate (password_hash)");
+    res.json({
+      success: true,
+      message: "Profil berhasil diperbarui!"
+    });
+
+  } catch (err) {
+    console.error("Update Profil Error:", err.message);
+    res.status(500).json({ message: "Gagal mengupdate profil" });
+  }
+};
