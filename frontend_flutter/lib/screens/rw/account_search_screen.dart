@@ -90,27 +90,36 @@ class _AccountSearchScreenState extends State<AccountSearchScreen> {
     );
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
+    // Definisi warna biar seragam (bisa ditaruh di atas juga)
+    const Color backgroundColor = Color(0xFFFAF6E6); 
+
     return Material(
-      color: const Color(0xFFFAF6E6), // Background cream
+      color: backgroundColor, // Background utama krem
       child: Column(
         children: [
-          // --- HEADER (SAMA SEPERTI DESAIN ANDA) ---
+          // --- HEADER (PERBAIKAN WARNA) ---
           Container(
-            color: Colors.white,
+            color: backgroundColor, // <--- GANTI INI (Tadinya Colors.white)
             padding: const EdgeInsets.only(top: 40.0, bottom: 20.0),
             width: double.infinity,
             child: Column(
               children: [
                 const Icon(Icons.home_work, color: Colors.green, size: 40), 
                 const SizedBox(height: 5),
-                const Text('Manajemen RT/RW', style: TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold)),
-                const Text('Membangun Komunitas Cerdas', style: TextStyle(color: Colors.green, fontSize: 10)),
+                const Text(
+                  'Manajemen RT/RW', 
+                  style: TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold)
+                ),
+                const Text(
+                  'Membangun Komunitas Cerdas', 
+                  style: TextStyle(color: Colors.green, fontSize: 10)
+                ),
               ],
             ),
           ),
-
+          
           // --- JUDUL & SEARCH BAR ---
           Expanded(
             child: Column(

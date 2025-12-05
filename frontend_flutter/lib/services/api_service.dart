@@ -219,4 +219,56 @@ class ApiService {
       rethrow; 
     }
   }
+
+// ... di dalam class ApiService ...
+
+  // === AMBIL PROFIL SAYA ===
+  static Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/me"), // Panggil endpoint /api/auth/me
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_token",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {"success": false, "message": "Gagal memuat profil"};
+      }
+    } catch (e) {
+      return {"success": false, "message": "Error: $e"};
+    }
+  }
+
+  // === LOGOUT (HAPUS TOKEN) ===
+  static void logout() {
+    _token = null; // Hapus token dari memori
+    // Jika nanti Anda pakai SharedPreferences, hapus juga dari sana
+  }
+
+
+// === AMBIL NOTIFIKASI ===
+  static Future<List<dynamic>> getNotifications() async {
+    try {
+      final response = await http.get(
+        Uri.parse("http://localhost:5000/api/warga/rw/notifications"), // Ganti 10.0.2.2 jika Emulator
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_token",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data']; // Kembalikan list notifikasi
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
+  }
 }

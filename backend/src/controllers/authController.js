@@ -187,3 +187,69 @@ export const registerRW = registerUserByRole("RW");
 export const registerRT = registerUserByRole("RT");
 export const registerWarga = registerUserByRole("Warga");
 export { login };
+
+// getMe
+
+export const getMe = async (req, res) => {
+  try {
+    const userId = req.user.id_pengguna;
+    
+    // 1. QUERY DIPERBAIKI: 
+    // - Hapus 'nama_lengkap' (Ganti jadi ambil username)
+    // - Ganti 'role' jadi 'id_role' (Sesuai nama kolom di DB)
+    const userQuery = await pool.query(
+      "SELECT email, username, id_role FROM pengguna WHERE id_pengguna = $1", 
+      [userId]
+    );
+
+    if (userQuery.rows.length === 0) return res.status(404).json({ message: "User tidak ditemukan" });
+    
+    const userData = userQuery.rows[0];
+    
+    // 2. Mapping Role ID ke Nama Role (Agar di Frontend muncul "RW", bukan "1")
+    let roleName = "User";
+    if (userData.id_role === 1) roleName = "RW";
+    else if (userData.id_role === 2) roleName = "RT";
+    else if (userData.id_role === 3) roleName = "Warga";
+
+    let wilayahData = {
+        nomor_wilayah: "Belum Ada", 
+        kode_unik: "-"
+    };
+
+    // 3. Ambil Data Wilayah (Gunakan roleName yang sudah di-mapping)
+    if (roleName === 'RW') {
+        const rwQuery = await pool.query("SELECT nama_rw, kode_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
+        if (rwQuery.rows.length > 0) {
+            wilayahData = {
+                nomor_wilayah: rwQuery.rows[0].nama_rw, 
+                kode_unik: rwQuery.rows[0].kode_rw
+            };
+        }
+    } else if (roleName === 'RT') {
+        const rtQuery = await pool.query("SELECT kode_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
+        if (rtQuery.rows.length > 0) {
+            wilayahData = {
+                nomor_wilayah: "RT " + rtQuery.rows[0].kode_rt,
+                kode_unik: "-" 
+            };
+        }
+    }
+
+    // 4. Kirim Response (Mapping username jadi nama_lengkap agar Frontend tidak error)
+    res.json({
+      success: true,
+      data: {
+        nama_lengkap: userData.username, // <--- PENTING: Pakai username sebagai nama
+        username: userData.username,
+        email: userData.email,
+        role: roleName, // Kirim "RW"/"RT" ke frontend
+        ...wilayahData
+      }
+    });
+
+  } catch (err) {
+    console.error("Error getMe:", err.message);
+    res.status(500).json({ message: "Gagal memuat profil" });
+  }
+};

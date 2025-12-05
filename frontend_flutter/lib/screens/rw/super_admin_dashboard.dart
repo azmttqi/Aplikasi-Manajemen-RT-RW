@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart'; // Sesuaikan path jika perlu
 import 'DetailAkunPage.dart'; // Sesuaikan path jika perlu
-import 'DetailStatistikWarga.dart';
 import 'account_search_screen.dart';
+import '../../utils/global_keys.dart';
+import 'StatistikPerRtScreen.dart';
+import 'main_screen.dart';
+
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -55,37 +58,38 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
 void _navigateToDetail(String title, String value) {
     
-    // SKENARIO 1: Jika klik "Jumlah Warga" -> Ke Halaman Statistik Gender
+    // SKENARIO 1: Klik "Jumlah Warga" -> Lihat Sebaran Warga per RT
     if (title == 'Jumlah Warga') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => DetailStatistikWarga(
-            total: value,
-            // Ambil data detail dari _dashboardData (pastikan backend sudah kirim)
-            laki: _dashboardData?['total_laki']?.toString() ?? '0',
-            perempuan: _dashboardData?['total_perempuan']?.toString() ?? '0',
+          builder: (context) => const StatistikPerRtScreen(
+            title: "Sebaran Warga per RT",
+            dataType: "warga",
           ),
         ),
       );
     } 
     
-    // SKENARIO 2: Jika klik "Jumlah RT" -> Ke Halaman List RT (Pencarian)
-    else if (title == 'Jumlah RT') {
+    // SKENARIO 2: Klik "Jumlah Kartu Keluarga" -> Lihat Sebaran KK per RT
+    else if (title == 'Jumlah Kartu Keluarga') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const AccountSearchScreen(), // Halaman List RT yang tadi kita fix
+          builder: (context) => const StatistikPerRtScreen(
+            title: "Sebaran KK per RT",
+            dataType: "kk",
+          ),
         ),
       );
     }
-    
-    // SKENARIO 3: Lainnya (misal KK) -> Tampilkan Detail Sederhana (Opsional)
-    else {
-      // Bisa ke detail page biasa atau biarkan kosong
-      ScaffoldMessenger.of(context).showSnackBar(
-         const SnackBar(content: Text("Detail belum tersedia"))
-      );
+
+    // SKENARIO 3: Klik "Jumlah RT" -> Ke List RT (Pakai GlobalKey Tab)
+    else if (title == 'Jumlah RT') {
+      final state = mainScreenKey.currentState;
+      if (state is RwMainScreenState) {
+        state.changeTab(1); 
+      }
     }
   }
   @override

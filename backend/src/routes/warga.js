@@ -11,7 +11,8 @@ import {
     getDashboardRW,
     
     // Controller Baru (PENTING!)
-    getDataList 
+    getDataList,
+    getNotificationsRW 
 } from "../controllers/wargaController.js";
 
 import { verifyToken } from "../middleware/authMiddleware.js";
@@ -48,5 +49,8 @@ router.delete("/:id", verifyToken, deleteWarga);
 router.get("/rw/warga", verifyToken, ensureRoleRW, getAllWargaByRW);
 router.get("/rw/statistik", verifyToken, ensureRoleRW, getStatistikWargaByRW);
 router.get("/rw/dashboard", verifyToken, ensureRoleRW, getDashboardRW);
+
+// Route Notifikasi
+router.get("/rw/notifications", verifyToken, ensureRoleRW, getNotificationsRW);
 
 export default router;

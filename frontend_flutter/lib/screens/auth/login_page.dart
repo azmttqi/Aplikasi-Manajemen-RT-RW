@@ -56,7 +56,7 @@ class _LoginPageState extends State<LoginPage> {
       if (role == "RW") {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => MainScreen()),
+          MaterialPageRoute(builder: (_) => RwMainScreen()),
         );
       } else if (role == "RT") {
         // TODO: ganti dengan DashboardRT kalau sudah ada
