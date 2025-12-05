@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../widgets/bottom_nav.dart'; // Pastikan path ini benar sesuai project Anda
 import '../../services/api_service.dart'; // Import API Service
 
 class DashboardScreen extends StatefulWidget {
@@ -10,8 +9,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int navIndex = 0;
-  
   // State untuk data dashboard
   bool _isLoading = true;
   Map<String, dynamic>? _dashboardData;
@@ -31,7 +28,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
 
     try {
-      // Panggil API (Backend otomatis tahu ini RT berdasarkan Token)
       final result = await ApiService.getDashboardStats();
 
       if (mounted) {
@@ -57,100 +53,114 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F2E5),
-      appBar: AppBar(
-        title: const Text('Dashboard Admin RT', style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
+      backgroundColor: const Color(0xFFF8F2E5), // Warna background cream
       
-      // LOGIKA TAMPILAN BODY
+      // ❌ APPBAR DIHAPUS (Supaya Header Logo menyatu dengan background)
+      // ❌ BOTTOM NAVIGATION DIHAPUS (Supaya tidak double dengan Main Screen)
+
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator()) // 1. Loading
+          ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center( // 2. Error & Retry
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.error_outline, size: 48, color: Colors.red),
                       const SizedBox(height: 10),
                       Text(_errorMessage!),
-                      const SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: _fetchData,
-                        child: const Text("Coba Lagi"),
-                      )
+                      ElevatedButton(onPressed: _fetchData, child: const Text("Coba Lagi"))
                     ],
                   ),
                 )
-              : RefreshIndicator( // 3. Data Asli (Bisa di-refresh)
+              : RefreshIndicator(
                   onRefresh: _fetchData,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 20),
-                          const Text(
-                            "Statistik Lingkungan",
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        
+                        // --- 1. HEADER LOGO (BARU) ---
+                        // Ini yang membuat kartu statistik turun ke bawah
+                        Center(
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 20),
+                              const Icon(Icons.home_work_rounded, size: 70, color: Colors.green),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Manajemen RT/RW',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                              Text(
+                                'Membangun Komunitas Cerdas',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.green[800],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 20),
-                          
-                          // KARTU 1: JUMLAH WARGA
-                          cardInfo(
-                            'Jumlah Warga', 
-                            _dashboardData?['total_warga']?.toString() ?? '0',
-                            Icons.people,
-                            Colors.blue
-                          ),
-                          
-                          // KARTU 2: JUMLAH KK
-                          cardInfo(
-                            'Jumlah KK', 
-                            _dashboardData?['total_kk']?.toString() ?? '0',
-                            Icons.folder_shared,
-                            Colors.orange
-                          ),
+                        ),
 
-                          // (Opsional) Info Tambahan
-                          const SizedBox(height: 20),
-                          const Padding(
-                            padding: EdgeInsets.all(12.0),
-                            child: Text(
-                              "Data ini diambil secara realtime dari database.",
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
-                              textAlign: TextAlign.center,
-                            ),
+                        const SizedBox(height: 40), // Jarak pemisah
+
+                        // --- 2. JUDUL ---
+                        const Text(
+                          'Dashboard Admin RT',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 5),
+                        const Text(
+                          'Data Statistik Lingkungan',
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // --- 3. KARTU STATISTIK (Style Lama Anda) ---
+                        
+                        // KARTU JUMLAH WARGA
+                        cardInfo(
+                          'Jumlah Warga', 
+                          _dashboardData?['total_warga']?.toString() ?? '0',
+                          Icons.people,
+                          Colors.blue
+                        ),
+                        
+                        // KARTU JUMLAH KK
+                        cardInfo(
+                          'Jumlah KK', 
+                          _dashboardData?['total_kk']?.toString() ?? '0',
+                          Icons.folder_shared,
+                          Colors.orange
+                        ),
+
+                        const SizedBox(height: 20),
+                      ],
                     ),
                   ),
                 ),
-      
-      // Navigasi Bawah Tetap Sama
-      bottomNavigationBar: BottomNav(
-        currentIndex: navIndex,
-        onTap: (i) {
-          setState(() => navIndex = i);
-          // Pastikan route '/search' dan '/profile' sudah didaftarkan di main.dart
-          if (i == 2) Navigator.pushNamed(context, '/search');
-          if (i == 3) Navigator.pushNamed(context, '/profile');
-        },
-      ),
     );
   }
 
+  // Widget Style Lama Anda (Saya rapikan sedikit biar makin cantik)
   Widget cardInfo(String title, String value, IconData icon, Color color) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 15), // Jarak antar kartu
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(15), // Radius lebih halus
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -170,7 +180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 8),
               Text(
                 value,
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -178,9 +188,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: color, size: 32),
+            child: Icon(icon, color: color, size: 36),
           ),
         ],
       ),

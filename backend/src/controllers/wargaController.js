@@ -116,46 +116,46 @@ export const getPendingWargaForRT = async (req, res) => {
   }
 };
 
-/* ============================================================
-   ✅ VERIFIKASI WARGA OLEH RT
-============================================================ */
-export const verifikasiWarga = async (req, res) => {
-  try {
-    const userId = req.user.id_pengguna;
-    const { nik, status_verifikasi } = req.body;
+// /* ============================================================
+//    ✅ VERIFIKASI WARGA OLEH RT
+// ============================================================ */
+// export const verifikasiWarga = async (req, res) => {
+//   try {
+//     const userId = req.user.id_pengguna;
+//     const { nik, status_verifikasi } = req.body;
 
-    if (!nik || !status_verifikasi)
-      return res.status(400).json({ message: "NIK dan status_verifikasi wajib diisi" });
+//     if (!nik || !status_verifikasi)
+//       return res.status(400).json({ message: "NIK dan status_verifikasi wajib diisi" });
 
-    const wilayahRes = await pool.query(
-      "SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1",
-      [userId]
-    );
-    if (wilayahRes.rowCount === 0)
-      return res.status(400).json({ message: "RT belum memiliki wilayah" });
+//     const wilayahRes = await pool.query(
+//       "SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1",
+//       [userId]
+//     );
+//     if (wilayahRes.rowCount === 0)
+//       return res.status(400).json({ message: "RT belum memiliki wilayah" });
 
-    const id_rt = wilayahRes.rows[0].id_rt;
+//     const id_rt = wilayahRes.rows[0].id_rt;
 
-    const updateRes = await pool.query(
-      `UPDATE warga
-       SET status_verifikasi = $1
-       WHERE nik = $2 AND id_rt = $3
-       RETURNING *`,
-      [status_verifikasi.toLowerCase(), nik, id_rt]
-    );
+//     const updateRes = await pool.query(
+//       `UPDATE warga
+//        SET status_verifikasi = $1
+//        WHERE nik = $2 AND id_rt = $3
+//        RETURNING *`,
+//       [status_verifikasi.toLowerCase(), nik, id_rt]
+//     );
 
-    if (updateRes.rowCount === 0)
-      return res.status(404).json({ message: "Warga tidak ditemukan di RT ini" });
+//     if (updateRes.rowCount === 0)
+//       return res.status(404).json({ message: "Warga tidak ditemukan di RT ini" });
 
-    res.status(200).json({
-      message: `Warga dengan NIK ${nik} berhasil diverifikasi (${status_verifikasi})`,
-      data: updateRes.rows[0],
-    });
-  } catch (err) {
-    console.error("❌ Gagal verifikasi warga:", err.message);
-    res.status(500).json({ message: "Gagal memverifikasi warga", error: err.message });
-  }
-};
+//     res.status(200).json({
+//       message: `Warga dengan NIK ${nik} berhasil diverifikasi (${status_verifikasi})`,
+//       data: updateRes.rows[0],
+//     });
+//   } catch (err) {
+//     console.error("❌ Gagal verifikasi warga:", err.message);
+//     res.status(500).json({ message: "Gagal memverifikasi warga", error: err.message });
+//   }
+// };
 
 /* ============================================================
    👁️ SEMUA WARGA PENDING (ADMIN)
@@ -435,5 +435,38 @@ export const verifikasiAkun = async (req, res) => {
   } catch (err) {
     console.error("Verifikasi Error:", err.message);
     res.status(500).json({ message: "Gagal memverifikasi akun" });
+  }
+};
+/* ============================================================
+   ✅ UPDATE STATUS WARGA (FINAL FIX: status_verifikasi)
+============================================================ */
+export const verifikasiWarga = async (req, res) => {
+  try {
+    const { id_warga } = req.params; 
+    const { status_id } = req.body;  // Frontend kirim: 2 (Aktif), 0 (Tolak)
+
+    // FIX: Gunakan nama kolom yang benar: 'status_verifikasi'
+    const updateQuery = `
+      UPDATE warga 
+      SET status_verifikasi = $1 
+      WHERE id_warga = $2 
+      RETURNING *
+    `;
+
+    const result = await pool.query(updateQuery, [status_id, id_warga]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Data warga tidak ditemukan" });
+    }
+
+    res.json({
+      success: true,
+      message: "Status warga berhasil diperbarui",
+      data: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("Verifikasi Warga Error:", err.message);
+    res.status(500).json({ message: "Gagal memverifikasi warga" });
   }
 };

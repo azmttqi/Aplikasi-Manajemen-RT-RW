@@ -352,4 +352,26 @@ class ApiService {
       return {'success': false, 'message': 'Terjadi kesalahan koneksi'};
     }
   }
-} 
+
+// === VERIFIKASI WARGA (RT) - FIX STRING ===
+  // Perhatikan: statusId sekarang bertipe String
+  static Future<bool> updateStatusWarga(int idWarga, String status) async {
+    try {
+      final response = await http.put(
+        Uri.parse("http://localhost:5000/api/warga/verify/$idWarga"), 
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_token",
+        },
+        body: jsonEncode({
+          "status_id": status, // Kirim string: "disetujui", "ditolak", atau "pending"
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error updateStatusWarga: $e");
+      return false;
+    }
+  }
+}

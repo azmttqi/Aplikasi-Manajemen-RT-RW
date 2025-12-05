@@ -3,6 +3,7 @@ import '../../services/api_service.dart';
 import '../rw/super_admin_dashboard.dart';
 import '../rt/dashboard_screen.dart';
 import '../rw/main_screen.dart';
+import '../rt/rt_main_screen.dart';
 
 // TODO: import dashboard RT / Warga kalau sudah ada
 
@@ -58,11 +59,11 @@ class _LoginPageState extends State<LoginPage> {
           context,
           MaterialPageRoute(builder: (_) => RwMainScreen()),
         );
-      } else if (role == "RT") {
-        // TODO: ganti dengan DashboardRT kalau sudah ada
+      // Di login_page.dart
+      } else if (role == 'RT') {
         Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => DashboardScreen()),
+          context, 
+          MaterialPageRoute(builder: (context) => const RtMainScreen()), // <--- Pastikan ini
         );
       } else if (role == "Warga") {
         // TODO: ganti dengan DashboardWarga kalau sudah ada
