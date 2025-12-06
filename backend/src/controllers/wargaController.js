@@ -70,20 +70,48 @@ export const updateWarga = async (req, res) => {
 };
 
 /* ============================================================
-   ❌ HAPUS WARGA (berdasarkan NIK)
+   ❌ HAPUS WARGA TOTAL (Hapus Biodata + Akun Login)
 ============================================================ */
 export const deleteWarga = async (req, res) => {
-  const { nik } = req.params;
+  const { id } = req.params; // id_warga
+
+  const client = await pool.connect(); // Pakai client untuk transaksi
 
   try {
-    const result = await pool.query("DELETE FROM warga WHERE nik = $1 RETURNING *", [nik]);
-    if (result.rowCount === 0)
-      return res.status(404).json({ message: "Warga tidak ditemukan" });
+    await client.query('BEGIN'); // Mulai Transaksi
 
-    res.json({ message: "Data warga berhasil dihapus", data: result.rows[0] });
+    // 1. Cari dulu ID Pengguna (Akun Login) milik warga ini
+    const checkQuery = "SELECT pengguna_id FROM warga WHERE id_warga = $1";
+    const checkResult = await client.query(checkQuery, [id]);
+
+    if (checkResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: "Warga tidak ditemukan" });
+    }
+
+    const idPengguna = checkResult.rows[0].pengguna_id;
+
+    // 2. Hapus Data Biodata di tabel 'warga'
+    await client.query("DELETE FROM warga WHERE id_warga = $1", [id]);
+
+    // 3. Hapus Akun Login di tabel 'pengguna' (Jika ada)
+    if (idPengguna) {
+      await client.query("DELETE FROM pengguna WHERE id_pengguna = $1", [idPengguna]);
+    }
+
+    await client.query('COMMIT'); // Simpan perubahan permanen
+
+    res.json({ 
+      success: true, 
+      message: "Data warga dan akun login berhasil dihapus permanen." 
+    });
+
   } catch (err) {
-    console.error("❌ Gagal menghapus warga:", err.message);
-    res.status(500).json({ message: "Gagal menghapus data warga", error: err.message });
+    await client.query('ROLLBACK'); // Batalkan jika ada error
+    console.error("Delete Error:", err.message);
+    res.status(500).json({ message: "Gagal menghapus data warga" });
+  } finally {
+    client.release();
   }
 };
 
@@ -115,47 +143,6 @@ export const getPendingWargaForRT = async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil warga pending", error: err.message });
   }
 };
-
-// /* ============================================================
-//    ✅ VERIFIKASI WARGA OLEH RT
-// ============================================================ */
-// export const verifikasiWarga = async (req, res) => {
-//   try {
-//     const userId = req.user.id_pengguna;
-//     const { nik, status_verifikasi } = req.body;
-
-//     if (!nik || !status_verifikasi)
-//       return res.status(400).json({ message: "NIK dan status_verifikasi wajib diisi" });
-
-//     const wilayahRes = await pool.query(
-//       "SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1",
-//       [userId]
-//     );
-//     if (wilayahRes.rowCount === 0)
-//       return res.status(400).json({ message: "RT belum memiliki wilayah" });
-
-//     const id_rt = wilayahRes.rows[0].id_rt;
-
-//     const updateRes = await pool.query(
-//       `UPDATE warga
-//        SET status_verifikasi = $1
-//        WHERE nik = $2 AND id_rt = $3
-//        RETURNING *`,
-//       [status_verifikasi.toLowerCase(), nik, id_rt]
-//     );
-
-//     if (updateRes.rowCount === 0)
-//       return res.status(404).json({ message: "Warga tidak ditemukan di RT ini" });
-
-//     res.status(200).json({
-//       message: `Warga dengan NIK ${nik} berhasil diverifikasi (${status_verifikasi})`,
-//       data: updateRes.rows[0],
-//     });
-//   } catch (err) {
-//     console.error("❌ Gagal verifikasi warga:", err.message);
-//     res.status(500).json({ message: "Gagal memverifikasi warga", error: err.message });
-//   }
-// };
 
 /* ============================================================
    👁️ SEMUA WARGA PENDING (ADMIN)
@@ -404,18 +391,19 @@ export const getNotificationsRW = async (req, res) => {
   }
 };
 /* ============================================================
-   ✅ VERIFIKASI AKUN (Ubah Status jadi Disetujui)
+   ✅ VERIFIKASI AKUN RT (RW ACC RT) - VERSI STABIL
 ============================================================ */
 export const verifikasiAkun = async (req, res) => {
-  const { id } = req.params; // ID User yang mau diverifikasi (dikirim dari URL)
+  const { id } = req.params; 
 
   try {
-    // 1. Update status_verifikasi_id di tabel pengguna
-    // Asumsi: ID 2 = 'Disetujui' (Sesuai seed data Anda sebelumnya)
-    // Atau kita pakai subquery biar aman
+    // KITA TEMBAK LANGSUNG STATUSNYA JADI '2' (AKTIF)
+    // Asumsi: Di tabel pengguna kolomnya 'status_verifikasi_id' (Integer)
+    // Jika ternyata error kolom tidak ada, ganti jadi 'status_verifikasi' dan nilainya 'disetujui'
+    
     const updateQuery = `
       UPDATE pengguna 
-      SET status_verifikasi_id = (SELECT id FROM status_verifikasi WHERE nama = 'Disetujui' LIMIT 1)
+      SET status_verifikasi_id = 2  -- Langsung set angka 2 (Aktif)
       WHERE id_pengguna = $1
       RETURNING id_pengguna, email, status_verifikasi_id
     `;
@@ -423,29 +411,39 @@ export const verifikasiAkun = async (req, res) => {
     const result = await pool.query(updateQuery, [id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: "User tidak ditemukan" });
+      return res.status(404).json({ message: "User RT tidak ditemukan" });
     }
 
     res.json({
       success: true,
-      message: "Akun berhasil diverifikasi!",
+      message: "Akun RT berhasil diverifikasi!",
       data: result.rows[0]
     });
 
   } catch (err) {
-    console.error("Verifikasi Error:", err.message);
-    res.status(500).json({ message: "Gagal memverifikasi akun" });
+    console.error("Verifikasi RT Error:", err.message);
+    
+    // Cek jika errornya karena nama kolom salah
+    if (err.message.includes('column "status_verifikasi_id" of relation "pengguna" does not exist')) {
+        return res.status(500).json({ message: "Error DB: Kolom status_verifikasi_id tidak ada di tabel pengguna." });
+    }
+    
+    res.status(500).json({ message: "Gagal memverifikasi akun RT" });
   }
 };
 /* ============================================================
-   ✅ UPDATE STATUS WARGA (FINAL FIX: status_verifikasi)
+   ✅ VERIFIKASI WARGA (RT ACC Warga)
 ============================================================ */
 export const verifikasiWarga = async (req, res) => {
   try {
     const { id_warga } = req.params; 
-    const { status_id } = req.body;  // Frontend kirim: 2 (Aktif), 0 (Tolak)
+    
+    // UBAH NAMA VARIABEL BIAR JELAS (Opsional, tapi disarankan)
+    // Kita terima 'status' berupa string ("disetujui"/"ditolak")
+    // Pastikan di Frontend (api_service.dart) key-nya juga diganti jadi "status" atau biarkan "status_id"
+    const { status_id } = req.body; 
 
-    // FIX: Gunakan nama kolom yang benar: 'status_verifikasi'
+    // Pastikan kolom di database kamu namanya 'status_verifikasi'
     const updateQuery = `
       UPDATE warga 
       SET status_verifikasi = $1 

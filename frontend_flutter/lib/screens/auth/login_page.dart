@@ -4,6 +4,8 @@ import '../rw/super_admin_dashboard.dart';
 import '../rt/dashboard_screen.dart';
 import '../rw/main_screen.dart';
 import '../rt/rt_main_screen.dart';
+import '../warga/warga_dashboard.dart';
+import '../warga/warga_main_screen.dart';
 
 // TODO: import dashboard RT / Warga kalau sudah ada
 
@@ -66,12 +68,10 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (context) => const RtMainScreen()), // <--- Pastikan ini
         );
       } else if (role == "Warga") {
-        // TODO: ganti dengan DashboardWarga kalau sudah ada
-        setState(() {
-          _showError = true;
-          _errorText =
-              "Peran Warga terdeteksi, tapi halaman Dashboard Warga belum di-setup.";
-        });
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (context) => const WargaMainScreen()), // <--- Pastikan ini
+        );
       } else {
         setState(() {
           _showError = true;

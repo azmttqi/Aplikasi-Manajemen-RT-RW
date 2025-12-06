@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import 'edit_warga_screen.dart'; // Pastikan file ini sudah ada (kita buat di langkah sebelumnya)
 
 class VerifyDetailScreen extends StatefulWidget {
-  final Map<String, dynamic> data; // Menerima data warga dari halaman list
+  final Map<String, dynamic> data;
 
   const VerifyDetailScreen({super.key, required this.data});
 
@@ -13,14 +14,11 @@ class VerifyDetailScreen extends StatefulWidget {
 class _VerifyDetailScreenState extends State<VerifyDetailScreen> {
   bool _isLoading = false;
 
-  // Fungsi Verifikasi (Panggil API Update)
+  // --- FUNGSI VERIFIKASI (UPDATE STATUS) ---
   void _prosesVerifikasi(String status) async {
     setState(() => _isLoading = true);
 
-    // Ambil ID Warga
     final int idWarga = widget.data['id_warga'] ?? 0;
-    
-    // Panggil API
     bool sukses = await ApiService.updateStatusWarga(idWarga, status);
 
     setState(() => _isLoading = false);
@@ -35,8 +33,7 @@ class _VerifyDetailScreenState extends State<VerifyDetailScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Kembali ke halaman List dan kirim sinyal 'true' agar list direfresh
-        Navigator.pop(context, true); 
+        Navigator.pop(context, true); // Refresh list
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Gagal mengupdate status"), backgroundColor: Colors.red),
@@ -45,30 +42,102 @@ class _VerifyDetailScreenState extends State<VerifyDetailScreen> {
     }
   }
 
+  // --- FUNGSI HAPUS WARGA (BARU) ---
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Hapus Data Warga?"),
+        content: const Text(
+          "Apakah Anda yakin? Data yang dihapus tidak dapat dikembalikan. \n\nJika warga hanya pindah, sebaiknya edit datanya saja.",
+          style: TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text("Batal")
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(context); // Tutup Dialog
+              
+              setState(() => _isLoading = true); // Loading mulai
+              
+              final int idWarga = widget.data['id_warga'] ?? 0;
+              
+              // Panggil API Hapus
+              bool sukses = await ApiService.deleteWarga(idWarga);
+              
+              if (mounted) {
+                setState(() => _isLoading = false); // Loading selesai
+                
+                if (sukses) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Data warga berhasil dihapus 🗑️"))
+                  );
+                  Navigator.pop(context, true); // Kembali ke list & refresh
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Gagal menghapus data"), backgroundColor: Colors.red)
+                  );
+                }
+              }
+            },
+            child: const Text("Hapus Permanen", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = widget.data;
-    // Ambil status, pastikan uppercase biar mudah dicek
     String status = (d['status_verifikasi'] ?? 'pending').toString().toUpperCase();
 
-    // Tentukan warna status
     Color statusColor = Colors.orange;
     if (status == 'DISETUJUI') statusColor = Colors.green;
     if (status == 'DITOLAK') statusColor = Colors.red;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E1), // Background Cream
+      backgroundColor: const Color(0xFFFFF8E1),
       appBar: AppBar(
         title: const Text("Detail Warga", style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
+        actions: [
+          // TOMBOL EDIT (PENSIL)
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.blue),
+            tooltip: "Edit Data",
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditWargaScreen(data: widget.data),
+                ),
+              );
+              if (result == true) {
+                Navigator.pop(context, true);
+              }
+            },
+          ),
+          
+          // TOMBOL HAPUS (SAMPAH) - BARU
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            tooltip: "Hapus Warga",
+            onPressed: _confirmDelete,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // --- KARTU PROFIL UTAMA ---
+            // --- KARTU PROFIL ---
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -93,7 +162,6 @@ class _VerifyDetailScreenState extends State<VerifyDetailScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 5),
-                  // Badge Status
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
@@ -112,7 +180,7 @@ class _VerifyDetailScreenState extends State<VerifyDetailScreen> {
 
             const SizedBox(height: 20),
 
-            // --- INFO DETAIL LENGKAP ---
+            // --- INFO DETAIL ---
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -139,15 +207,11 @@ class _VerifyDetailScreenState extends State<VerifyDetailScreen> {
 
             const SizedBox(height: 30),
 
-            // ===============================================
-            // 👇 LOGIKA TOMBOL AKSI (DINAMIS)
-            // ===============================================
-            
+            // --- TOMBOL LOGIKA STATUS ---
             if (_isLoading)
               const Center(child: CircularProgressIndicator())
-
             else if (status != 'PENDING') 
-              // JIKA SUDAH SELESAI -> TAMPILKAN TOMBOL KOREKSI (RESET)
+              // Tombol Reset (Rollback)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(15),
@@ -164,45 +228,13 @@ class _VerifyDetailScreenState extends State<VerifyDetailScreen> {
                       size: 40,
                     ),
                     const SizedBox(height: 10),
-                    Text(
-                      "Status: $status",
-                      style: TextStyle(
-                        color: Colors.grey[800],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    const Text(
-                      "Salah pencet? Anda bisa membatalkannya.",
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    
+                    Text("Status: $status", style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 15),
-
-                    // TOMBOL RESET
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: () {
-                          // Dialog Konfirmasi
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text("Tinjau Ulang?"),
-                              content: const Text("Status warga akan dikembalikan ke 'Menunggu' agar bisa diverifikasi ulang."),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context); // Tutup dialog
-                                    _prosesVerifikasi("pending"); // PROSES RESET
-                                  },
-                                  child: const Text("Ya, Kembalikan"),
-                                ),
-                              ],
-                            ),
-                          );
+                          _prosesVerifikasi("pending"); // Reset ke Pending
                         },
                         icon: const Icon(Icons.refresh, size: 18),
                         label: const Text("Batalkan & Tinjau Ulang"),
@@ -216,12 +248,10 @@ class _VerifyDetailScreenState extends State<VerifyDetailScreen> {
                   ],
                 ),
               )
-              
             else
-              // JIKA STATUS == PENDING -> TAMPILKAN TOMBOL TERIMA / TOLAK
+              // Tombol Terima / Tolak
               Row(
                 children: [
-                  // Tombol Tolak
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => _prosesVerifikasi("ditolak"),
@@ -234,7 +264,6 @@ class _VerifyDetailScreenState extends State<VerifyDetailScreen> {
                     ),
                   ),
                   const SizedBox(width: 15),
-                  // Tombol Setuju
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => _prosesVerifikasi("disetujui"),
@@ -255,7 +284,6 @@ class _VerifyDetailScreenState extends State<VerifyDetailScreen> {
     );
   }
 
-  // Widget Helper untuk Baris Info
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),

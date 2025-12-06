@@ -300,7 +300,7 @@ class ApiService {
   static Future<bool> verifyAccount(int idUser) async {
     try {
       final response = await http.put(
-        Uri.parse("http://localhost:5000/api/warga/verify/$idUser"), // Ganti localhost jika perlu
+        Uri.parse("http://localhost:5000/api/warga/rw/verify/$idUser"), // Ganti localhost jika perlu
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $_token",
@@ -371,6 +371,42 @@ class ApiService {
       return response.statusCode == 200;
     } catch (e) {
       print("Error updateStatusWarga: $e");
+      return false;
+    }
+  }
+
+// === EDIT DATA WARGA ===
+  static Future<bool> editWarga(int idWarga, Map<String, dynamic> data) async {
+    try {
+      final response = await http.put(
+        Uri.parse("$baseUrl/../warga/$idWarga"), // Sesuaikan path ke /api/warga/:id
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_token",
+        },
+        body: jsonEncode(data),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error editWarga: $e");
+      return false;
+    }
+  }  
+
+  // === HAPUS DATA WARGA ===
+  static Future<bool> deleteWarga(int idWarga) async {
+    try {
+      final response = await http.delete(
+        Uri.parse("$baseUrl/../warga/$idWarga"), // Sesuaikan path ke /api/warga/:id
+        headers: {
+          "Authorization": "Bearer $_token",
+        },
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error deleteWarga: $e");
       return false;
     }
   }
