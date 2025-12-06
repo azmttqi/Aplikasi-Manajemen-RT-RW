@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import 'form_pengajuan_screen.dart';
+import 'riwayat_pengajuan_screen.dart';
 // import 'warga_detail_screen.dart'; // (Nanti buat file ini)
 
 class WargaDashboard extends StatefulWidget {
@@ -148,12 +150,12 @@ class _WargaDashboardState extends State<WargaDashboard> {
               Row(
                 children: [
                   // Tombol Ajukan Perubahan
-                  Expanded(
+                 Expanded(
                     child: _buildMenuButton(
                       icon: Icons.edit,
                       label: "Ajukan Perubahan Data",
                       onTap: () {
-                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Fitur Edit Segera Hadir")));
+                         Navigator.push(context, MaterialPageRoute(builder: (context) => const FormPengajuanScreen()));
                       },
                     ),
                   ),
@@ -164,7 +166,7 @@ class _WargaDashboardState extends State<WargaDashboard> {
                       icon: Icons.receipt_long,
                       label: "Riwayat Pengajuan Data",
                       onTap: () {
-                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Fitur Riwayat Segera Hadir")));
+                         Navigator.push(context, MaterialPageRoute(builder: (context) => const RiwayatPengajuanScreen()));
                       },
                     ),
                   ),
