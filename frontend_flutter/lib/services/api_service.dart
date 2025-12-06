@@ -410,4 +410,42 @@ class ApiService {
       return false;
     }
   }
+
+
+// === AJUKAN PERUBAHAN DATA ===
+  static Future<bool> ajukanPerubahan(String keterangan) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/../warga/pengajuan"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_token",
+        },
+        body: jsonEncode({"keterangan": keterangan}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // === AMBIL RIWAYAT PENGAJUAN ===
+  static Future<List<dynamic>> getRiwayatPengajuan() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/../warga/pengajuan/riwayat"),
+        headers: {
+          "Authorization": "Bearer $_token",
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'];
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
 }

@@ -5,6 +5,8 @@ import {
     updateWarga,
     deleteWarga,
     getDataList, // Smart Controller (Bisa buat RT & RW)
+    ajukanPerubahan,
+    getRiwayatSaya,
 
     // --- Controller Khusus RT ---
     getPendingWargaForRT,
@@ -34,6 +36,8 @@ router.get("/", verifyToken, getDataList);
 // 2. POST "/" -> Tambah Data Warga Baru
 router.post("/", verifyToken, addWarga);
 
+router.post("/pengajuan", verifyToken, ajukanPerubahan);
+router.get("/pengajuan/riwayat", verifyToken, getRiwayatSaya);
 
 // =================================================================
 // 🟠 ROUTES KHUSUS RT (Mengelola Warga)

@@ -468,3 +468,56 @@ export const verifikasiWarga = async (req, res) => {
     res.status(500).json({ message: "Gagal memverifikasi warga" });
   }
 };
+
+/* ============================================================
+   📝 AJUKAN PERUBAHAN DATA (Oleh Warga)
+============================================================ */
+export const ajukanPerubahan = async (req, res) => {
+  try {
+    const userId = req.user.id_pengguna;
+    const { keterangan } = req.body; // User mengetik apa yang mau diubah
+
+    // 1. Cari ID Warga berdasarkan User Login
+    const wargaCheck = await pool.query("SELECT id_warga FROM warga WHERE pengguna_id = $1", [userId]);
+    if (wargaCheck.rows.length === 0) return res.status(404).json({ message: "Data warga belum terhubung." });
+    
+    const idWarga = wargaCheck.rows[0].id_warga;
+
+    // 2. Simpan ke Tabel Pengajuan
+    await pool.query(
+      "INSERT INTO pengajuan_perubahan (id_warga, keterangan) VALUES ($1, $2)",
+      [idWarga, keterangan]
+    );
+
+    res.json({ success: true, message: "Pengajuan berhasil dikirim. Tunggu verifikasi RT." });
+
+  } catch (err) {
+    console.error("Ajukan Error:", err.message);
+    res.status(500).json({ message: "Gagal mengirim pengajuan" });
+  }
+};
+
+/* ============================================================
+   📜 LIHAT RIWAYAT PENGAJUAN (Oleh Warga)
+============================================================ */
+export const getRiwayatSaya = async (req, res) => {
+  try {
+    const userId = req.user.id_pengguna;
+    
+    const query = `
+      SELECT p.*, w.nama_lengkap 
+      FROM pengajuan_perubahan p
+      JOIN warga w ON p.id_warga = w.id_warga
+      WHERE w.pengguna_id = $1
+      ORDER BY p.created_at DESC
+    `;
+
+    const result = await pool.query(query, [userId]);
+
+    res.json({ success: true, data: result.rows });
+
+  } catch (err) {
+    console.error("Riwayat Error:", err.message);
+    res.status(500).json({ message: "Gagal mengambil riwayat" });
+  }
+};
