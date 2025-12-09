@@ -1,31 +1,27 @@
 import 'package:flutter/material.dart';
-import '../../utils/global_keys.dart'; // 1. Import Kunci Ajaib
-
+import '../../utils/global_keys.dart'; 
 import 'super_admin_dashboard.dart'; 
 import 'account_search_screen.dart'; 
-import 'DetailAkunPage.dart'; 
-import 'profil_screen.dart';
-import 'notification_screen.dart';
+import 'profil_screen.dart'; // Pastikan path benar
+import 'notification_screen.dart'; // Pastikan path benar
 
 class RwMainScreen extends StatefulWidget {
-  // 2. Pasang Kunci (Tanpa const, Tanpa super.key)
+  // Pasang Kunci
   RwMainScreen() : super(key: mainScreenKey);
 
   @override
-  // Hapus underscore (_) agar public
   State<RwMainScreen> createState() => RwMainScreenState();
 }
 
-// Hapus underscore (_) di sini juga
 class RwMainScreenState extends State<RwMainScreen> {
   int _selectedIndex = 0;
 
-  // 3. DAFTAR 4 HALAMAN (Sesuai keinginan Anda)
+  // DAFTAR 4 HALAMAN
   final List<Widget> _widgetOptions = <Widget>[
     const SuperAdminDashboard(),      // Index 0: Home
-    const AccountSearchScreen(),      // Index 1: Folder (Pencarian RT)
-    const NotificationScreen(),  // Index 2 notifikasi
-    const ProfileScreen(),     // Index 3: Profil
+    const AccountSearchScreen(),      // Index 1: Warga
+    const NotificationScreen(),       // Index 2: Notifikasi
+    const ProfileScreen(),            // Index 3: Profil
   ];
 
   void _onItemTapped(int index) {
@@ -34,7 +30,6 @@ class RwMainScreenState extends State<RwMainScreen> {
     });
   }
 
-  // 4. FUNGSI KHUSUS: Ganti Tab dari Luar (Dipanggil dari Dashboard)
   void changeTab(int index) {
     setState(() {
       _selectedIndex = index;
@@ -44,41 +39,54 @@ class RwMainScreenState extends State<RwMainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Gunakan IndexedStack agar halaman tersimpan (tidak reload saat pindah)
+      // IndexedStack menjaga state halaman agar tidak reload saat pindah tab
       body: IndexedStack(
         index: _selectedIndex,
         children: _widgetOptions,
       ),
       
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.green[800], // Warna latar hijau tua
-        selectedItemColor: Colors.amber,    // Warna ikon aktif (kuning emas)
-        unselectedItemColor: Colors.white,  // Warna ikon mati (putih)
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        showSelectedLabels: false, // Hilangkan label jika ingin gaya minimalis
-        showUnselectedLabels: false,
-        
-        // 5. KEMBALIKAN 4 ICON
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: 30),
-            label: 'Beranda',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.folder, size: 30),
-            label: 'Warga',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications, size: 30),
-            label: 'Notifikasi',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person, size: 30),
-            label: 'Profil',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 1,
+              blurRadius: 10,
+              offset: const Offset(0, -3), // Efek bayangan ke atas
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,      // GANTI JADI PUTIH (Lebih Clean)
+          selectedItemColor: Colors.green[700], // Icon Aktif: HIJAU TUA
+          unselectedItemColor: Colors.grey,     // Icon Mati: ABU-ABU
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          showSelectedLabels: true,  // Tampilkan label agar user tidak bingung
+          showUnselectedLabels: true,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Beranda',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.folder),
+              label: 'Warga',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.notifications),
+              label: 'Notifikasi',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profil',
+            ),
+          ],
+        ),
       ),
     );
   }
