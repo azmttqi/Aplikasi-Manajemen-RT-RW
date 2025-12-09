@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'dashboard_screen.dart'; 
 import 'search_screen.dart'; 
 import 'profile_screen.dart'; 
-import 'verify_list_screen.dart';
-// Karena di folder RT belum ada notifikasi, kita pinjam dulu punya RW
-// (Sesuaikan path ini jika lokasi file notifikasi Anda berbeda)
-import '../rt/notification_screen.dart'; 
+// import 'verify_list_screen.dart'; // <-- INI YANG LAMA (HAPUS ATAU KOMENTAR)
+import 'notification_screen.dart';   // <-- INI FILE BARU (Pastikan namanya benar)
 
 class RtMainScreen extends StatefulWidget {
   const RtMainScreen({super.key});
@@ -21,10 +19,13 @@ class _RtMainScreenState extends State<RtMainScreen> {
 
   // Daftar Halaman
   final List<Widget> _pages = [
-    const DashboardScreen(),    // Index 0: Dashboard RT
-    SearchScreen(),       // Index 1: Data Warga (Search)
-    const VerifyListScreen(), // Index 2: Notifikasi (Reuse punya RW)
-    ProfileScreen(),      // Index 3: Profil RT
+    const DashboardScreen(),     // Index 0: Dashboard RT
+    SearchScreen(),              // Index 1: Data Warga (Search)
+    
+    // --- PERBAIKAN DI SINI ---
+    const NotificationScreen(),  // Index 2: Panggil class NotificationScreen yang baru
+    
+    ProfileScreen(),             // Index 3: Profil RT
   ];
 
   void _onItemTapped(int index) {
@@ -50,7 +51,7 @@ class _RtMainScreenState extends State<RtMainScreen> {
             label: 'Beranda',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people), // Icon Warga
+            icon: Icon(Icons.people), 
             label: 'Warga',
           ),
           BottomNavigationBarItem(
@@ -65,4 +66,4 @@ class _RtMainScreenState extends State<RtMainScreen> {
       ),
     );
   }
-}  
+}
