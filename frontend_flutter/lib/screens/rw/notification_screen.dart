@@ -12,7 +12,7 @@ class NotificationScreen extends StatefulWidget {
 class _NotificationScreenState extends State<NotificationScreen> {
   List<dynamic> _notifList = [];
   bool _isLoading = true;
-
+  
   @override
   void initState() {
     super.initState();
@@ -20,7 +20,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   void _fetchNotif() async {
-    final data = await ApiService.getNotifications();
+    final data = await ApiService.getRwNotifications();
     if (mounted) {
       setState(() {
         _notifList = data;

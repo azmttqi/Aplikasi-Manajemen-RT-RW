@@ -116,7 +116,7 @@ export const deleteWarga = async (req, res) => {
 };
 
 /* ============================================================
-   👀 WARGA PENDING UNTUK RT LOGIN
+   👀 WARGA PENDING UNTUK RT LOGIN (FIX: TAMBAH id_warga)
 ============================================================ */
 export const getPendingWargaForRT = async (req, res) => {
   try {
@@ -130,7 +130,13 @@ export const getPendingWargaForRT = async (req, res) => {
     if (!id_rt) return res.status(400).json({ message: "RT belum terkait wilayah" });
 
     const result = await pool.query(
-      `SELECT nama_lengkap, nik, no_kk, id_rt, status_verifikasi
+      `SELECT 
+          id_warga,  -- <--- INI PENTING! JANGAN SAMPAI LUPA
+          nama_lengkap, 
+          nik, 
+          no_kk, 
+          id_rt,
+          status_verifikasi
        FROM warga
        WHERE id_rt = $1 AND status_verifikasi = 'pending'
        ORDER BY nama_lengkap ASC`,
@@ -260,76 +266,76 @@ export const getDashboardRW = async (req, res) => {
 };
 
 /* ============================================================
-   🔍 GET DATA LIST (FIX SEARCH)
+   🔍 GET DATA LIST (FIX FINAL: Filter Disetujui + No Alamat)
 ============================================================ */
 export const getDataList = async (req, res) => {
   try {
     const userId = req.user.id_pengguna; 
-    const { search } = req.query; // Ambil kata kunci search
+    const { search } = req.query; 
     
-    let query = "";
+    // 1. DEKLARASI VARIABEL (Supaya tidak error "query is not defined")
+    let query = ""; 
     let params = [];
 
-    // 1. Cek Apakah RW?
+    // 2. Cek Apakah RW?
     const rwCheck = await pool.query("SELECT id_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
     
     if (rwCheck.rows.length > 0) {
       const idRw = rwCheck.rows[0].id_rw;
-      params.push(idRw); // params[0] adalah idRw ($1)
+      params.push(idRw); 
 
+      // QUERY RW
       query = `
         SELECT 
-            rt.id_rt, 
+            rt.id_rt AS id,  
             rt.kode_rt AS nomor_rt,       
             rt.alamat_rt,
             u.username AS nama_ketua_rt, 
             u.email,
-            u.id_pengguna,
             u.status_verifikasi_id,
-            (SELECT COUNT(*) FROM warga w WHERE w.id_rt = rt.id_rt) AS jumlah_warga,
-            (SELECT COUNT(DISTINCT no_kk) FROM warga w WHERE w.id_rt = rt.id_rt) AS jumlah_kk
+            (SELECT COUNT(*) FROM warga w WHERE w.id_rt = rt.id_rt AND w.status_verifikasi ILIKE 'disetujui') AS jumlah_warga
         FROM wilayah_rt rt
         LEFT JOIN pengguna u ON rt.id_pengguna = u.id_pengguna
         WHERE rt.id_rw = $1
       `;
 
-      // --- LOGIKA SEARCH UNTUK RW ---
       if (search) {
-        // Cari berdasarkan Nama Ketua ATAU Kode RT
         query += ` AND (u.username ILIKE $2 OR rt.kode_rt ILIKE $2)`;
-        params.push(`%${search}%`); // params[1] adalah search keyword ($2)
+        params.push(`%${search}%`);
       }
       
       query += " ORDER BY rt.kode_rt ASC"; 
     } 
     
-    // 2. Cek Apakah RT?
+    // 3. Cek Apakah RT?
     else {
       const rtCheck = await pool.query("SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
       
       if (rtCheck.rows.length > 0) {
         const idRt = rtCheck.rows[0].id_rt;
-        params.push(idRt); // params[0] adalah idRt ($1)
+        params.push(idRt); 
         
+        // QUERY RT (FILTER AKTIF)
         query = `
           SELECT 
-            w.id_warga, 
+            w.id_warga AS id, 
             w.nama_lengkap, 
             w.nik, 
             w.no_kk, 
+            -- w.alamat,  <-- SAYA HAPUS KARENA ERROR COLUMN NOT EXIST
             w.status_verifikasi 
           FROM warga w
-          WHERE w.id_rt = $1
+          WHERE w.id_rt = $1 
+          -- FILTER: HANYA YANG DISETUJUI (HURUF BESAR/KECIL SAMA SAJA)
+          AND w.status_verifikasi ILIKE 'disetujui'
         `;
 
-        // --- LOGIKA SEARCH UNTUK RT ---
         if (search) {
-          // Cari berdasarkan Nama Warga
           query += ` AND w.nama_lengkap ILIKE $2`;
-          params.push(`%${search}%`); // params[1] adalah search keyword ($2)
+          params.push(`%${search}%`); 
         }
 
-        query += " ORDER BY w.id_warga DESC";
+        query += " ORDER BY w.nama_lengkap ASC";
       } else {
         return res.status(403).json({ message: "Akses ditolak." });
       }
@@ -345,7 +351,7 @@ export const getDataList = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Search Error:", err.message); // Cek terminal backend jika error
+    console.error("Search Error:", err.message);
     res.status(500).json({ message: "Server Error saat mencari data" });
   }
 };
@@ -432,18 +438,16 @@ export const verifikasiAkun = async (req, res) => {
   }
 };
 /* ============================================================
-   ✅ VERIFIKASI WARGA (RT ACC Warga)
+   ✅ VERIFIKASI WARGA (RT ACC Warga) - FIX KEY NAME
 ============================================================ */
 export const verifikasiWarga = async (req, res) => {
   try {
     const { id_warga } = req.params; 
     
-    // UBAH NAMA VARIABEL BIAR JELAS (Opsional, tapi disarankan)
-    // Kita terima 'status' berupa string ("disetujui"/"ditolak")
-    // Pastikan di Frontend (api_service.dart) key-nya juga diganti jadi "status" atau biarkan "status_id"
-    const { status_id } = req.body; 
+    // PERBAIKAN DI SINI:
+    // Gunakan 'status' agar sesuai dengan yang dikirim Frontend Flutter
+    const { status } = req.body; 
 
-    // Pastikan kolom di database kamu namanya 'status_verifikasi'
     const updateQuery = `
       UPDATE warga 
       SET status_verifikasi = $1 
@@ -451,7 +455,8 @@ export const verifikasiWarga = async (req, res) => {
       RETURNING *
     `;
 
-    const result = await pool.query(updateQuery, [status_id, id_warga]);
+    // Pastikan variabel yang dimasukkan adalah 'status'
+    const result = await pool.query(updateQuery, [status, id_warga]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Data warga tidak ditemukan" });

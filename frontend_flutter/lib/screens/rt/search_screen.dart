@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
-import 'verify_detail_screen.dart'; // ✅ Import halaman detail
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -11,220 +10,228 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  List<dynamic> _wargaList = [];
-  bool _isLoading = false;
-  String _rtName = "RT ..."; 
+  List<dynamic> _searchResults = [];
+  bool _isLoading = true; // Default Loading biar gak kaget
 
   @override
   void initState() {
     super.initState();
-    _fetchWarga(); 
-    _getProfileInfo();
+    // PANGGIL DATA OTOMATIS SAAT HALAMAN DIBUKA
+    _searchWarga(""); 
   }
 
-  void _getProfileInfo() async {
-    final me = await ApiService.getMe();
-    if (me != null && mounted) {
+  // Fungsi Pencarian
+  void _searchWarga(String query) async {
+    setState(() => _isLoading = true);
+
+    // Panggil API (Kirim query kosong "" artinya ambil semua)
+    final results = await ApiService.getWargaList(query: query);
+
+    if (mounted) {
       setState(() {
-        _rtName = me['nomor_wilayah'] ?? "RT ...";
+        _searchResults = results;
+        _isLoading = false;
       });
     }
-  }
-
-  void _fetchWarga([String? query]) async {
-    setState(() => _isLoading = true);
-    try {
-      final result = await ApiService.getWargaList(query: query ?? '');
-      if (mounted) {
-        setState(() {
-          _wargaList = result;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  String _maskNik(String? nik) {
-    if (nik == null || nik.length < 5) return "xxxxxxxx";
-    return "${nik.substring(0, 5)}xxxxxxxx";
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E1), 
-      body: SafeArea(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Data Warga", style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false, // Hilangkan back button jika di nav bar
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const SizedBox(height: 20),
-            
-            // --- HEADER ---
-            const Icon(Icons.home_work_rounded, size: 50, color: Colors.green),
-            const Text(
-              "Manajemen RT/RW",
-              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              "Pencarian Data Warga - $_rtName",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            
-            const SizedBox(height: 20),
-
-            // --- SEARCH BAR ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 45,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(5),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: const InputDecoration(
-                          hintText: "Cari NIK atau Nama Warga",
-                          hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
-                          prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 10),
-                        ),
-                        onSubmitted: (value) => _fetchWarga(value),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: () => _fetchWarga(_searchController.text),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber, 
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    ),
-                    child: const Text("Cari", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  )
-                ],
+            // KOLOM PENCARIAN
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: "Cari Nama Warga...",
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey[100],
               ),
+              onChanged: (value) {
+                // Opsional: Cari otomatis saat mengetik (Live Search)
+                _searchWarga(value);
+              },
             ),
-
             const SizedBox(height: 20),
 
-            // --- TABEL HEADER ---
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-              decoration: const BoxDecoration(
-                color: Color(0xFF6B8E78), 
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(5), topRight: Radius.circular(5)),
-              ),
-              child: const Row(
-                children: [
-                  Expanded(flex: 3, child: Text("NIK (Samaran)", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                  Expanded(flex: 3, child: Text("Nama Lengkap", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                  Expanded(flex: 2, child: Text("Aksi", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                ],
-              ),
-            ),
-
-            // --- LIST DATA ---
+            // HASIL PENCARIAN
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _wargaList.isEmpty
-                      ? const Center(child: Text("Tidak ada data warga ditemukan."))
+                  : _searchResults.isEmpty
+                      ? _buildEmptyState()
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: _wargaList.length,
+                          itemCount: _searchResults.length,
                           itemBuilder: (context, index) {
-                            final warga = _wargaList[index];
-                            
-                            // Cek Status untuk pewarnaan
-                            String status = (warga['status_verifikasi'] ?? 'pending').toString().toLowerCase();
-                            Color statusColor = Colors.grey;
-                            if (status == 'disetujui') statusColor = Colors.green;
-                            if (status == 'ditolak') statusColor = Colors.red;
-                            if (status == 'pending') statusColor = Colors.orange;
-
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border(
-                                  bottom: BorderSide(color: Colors.grey.shade300),
-                                  left: BorderSide(color: statusColor, width: 4), // Garis warna status di kiri
-                                  right: BorderSide(color: Colors.grey.shade300),
+                            final warga = _searchResults[index];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              color: Colors.white,
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.green[50],
+                                  child: const Icon(Icons.person, color: Colors.green),
                                 ),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 5),
-                              child: Row(
-                                children: [
-                                  // Kolom 1: NIK
-                                  Expanded(
-                                    flex: 3,
-                                    child: Text(
-                                      _maskNik(warga['nik']),
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ),
-                                  // Kolom 2: Nama
-                                  Expanded(
-                                    flex: 3,
-                                    child: Text(
-                                      warga['nama_lengkap'] ?? "-",
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ),
-                                  // Kolom 3: Tombol Detail
-                                  Expanded(
-                                    flex: 2,
-                                    child: Center(
-                                      child: SizedBox(
-                                        height: 25,
-                                        width: 60,
-                                        child: ElevatedButton(
-                                          // ✅ NAVIGASI KE DETAIL SCREEN
-                                          onPressed: () async {
-                                            // Kita reuse halaman VerifyDetailScreen karena fungsinya sama
-                                            // (Melihat detail & Mengubah status)
-                                            final result = await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => VerifyDetailScreen(data: warga),
-                                              ),
-                                            );
-
-                                            // Jika ada perubahan di dalam detail, refresh list pencarian
-                                            if (result == true) {
-                                              _fetchWarga(_searchController.text);
-                                            }
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFF9FA8DA), 
-                                            padding: EdgeInsets.zero,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                                          ),
-                                          child: const Text("Detail", style: TextStyle(fontSize: 10, color: Colors.black)),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                title: Text(
+                                  warga['nama_lengkap'] ?? "Tanpa Nama", 
+                                  style: const TextStyle(fontWeight: FontWeight.bold)
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("NIK: ${warga['nik'] ?? '-'}"),
+                                    Text("Alamat: ${warga['alamat'] ?? '-'}", style: const TextStyle(fontSize: 11)),
+                                  ],
+                                ),
+                                trailing: const Icon(Icons.verified, size: 18, color: Colors.blue), // Icon Verified
+                                onTap: () {
+                                  _showWargaDetail(warga);
+                                },
                               ),
                             );
                           },
                         ),
             ),
-             const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.folder_off, size: 60, color: Colors.grey[300]),
+          const SizedBox(height: 10),
+          const Text("Belum ada warga yang terverifikasi", style: TextStyle(color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+// GANTI FUNGSI INI DI DALAM search_screen.dart
+
+  void _showWargaDetail(Map<String, dynamic> warga) {
+    bool isProcessing = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text("Detail Warga"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _detailRow("Nama", warga['nama_lengkap']),
+                  _detailRow("NIK", warga['nik']),
+                  _detailRow("KK", warga['no_kk']),
+                  // _detailRow("Alamat", warga['alamat']), // Alamat kita skip dulu
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green[100], 
+                      borderRadius: BorderRadius.circular(8)
+                    ),
+                    child: const Text(
+                      "Status: TERVERIFIKASI ✅", 
+                      style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                ],
+              ),
+              actions: [
+                // TOMBOL BATALKAN VERIFIKASI (UNDO)
+                TextButton(
+                  onPressed: isProcessing ? null : () async {
+                    // Konfirmasi dulu biar gak kepencet lagi
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text("Batalkan Verifikasi?"),
+                        content: const Text("Warga ini akan dikembalikan ke status 'Menunggu' dan masuk ke halaman Notifikasi lagi."),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
+                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Ya, Kembalikan")),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      setStateDialog(() => isProcessing = true);
+                      
+                      // Panggil API untuk ubah status jadi 'pending'
+                      // Pastikan ID dikonversi ke int
+                      int idWarga = int.tryParse(warga['id'].toString()) ?? 0;
+                      
+                      // Kita pakai fungsi verifyWargaBaru yang sudah ada, kirim status 'pending'
+                      bool success = await ApiService.verifyWargaBaru(idWarga, 'pending');
+
+                      if (mounted) {
+                        Navigator.pop(context); // Tutup Dialog Detail
+                        if (success) {
+                          _searchWarga(""); // Refresh Halaman Search (Data akan hilang)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Verifikasi dibatalkan. Data kembali ke Notifikasi anulir ↩️"))
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Gagal membatalkan verifikasi"))
+                          );
+                        }
+                      }
+                    }
+                  },
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: isProcessing 
+                    ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text("Batalkan Verifikasi"),
+                ),
+                
+                // TOMBOL TUTUP BIASA
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Tutup"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+  Widget _detailRow(String label, String? value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 60, child: Text(label, style: const TextStyle(color: Colors.grey))),
+          const Text(": "),
+          Expanded(child: Text(value ?? "-", style: const TextStyle(fontWeight: FontWeight.bold))),
+        ],
       ),
     );
   }
