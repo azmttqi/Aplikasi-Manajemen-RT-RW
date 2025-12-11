@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math'; // Untuk generate kode acak
 import '../../../services/api_service.dart';
+import '../../widgets/logo_widget.dart'; // Import Logo Widget
 
 class RegisterRtScreen extends StatefulWidget {
   const RegisterRtScreen({super.key});
@@ -86,13 +87,26 @@ class _RegisterRtScreenState extends State<RegisterRtScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBE6), // Background cream sesuai desain
-      appBar: AppBar(title: const Text("Pendaftaran Admin RT"), backgroundColor: Colors.transparent, elevation: 0, foregroundColor: Colors.black),
+      appBar: AppBar(
+        title: const Text("Pendaftaran Admin RT"), 
+        backgroundColor: Colors.transparent, 
+        elevation: 0, 
+        foregroundColor: Colors.black
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- BAGIAN 1: DATA AKUN ---
+            
+            // --- 1. LOGO BARU (DITAMBAHKAN) ---
+            const Center(
+              child: LogoWidget(height: 180, width: 180),
+            ),
+            const SizedBox(height: 20),
+            // ----------------------------------
+
+            // --- BAGIAN 2: DATA AKUN ---
             _buildSectionTitle("Data Akun Admin RT"),
             _buildCard(
               children: [
@@ -105,7 +119,7 @@ class _RegisterRtScreenState extends State<RegisterRtScreen> {
             
             const SizedBox(height: 20),
 
-            // --- BAGIAN 2: DATA WILAYAH ---
+            // --- BAGIAN 3: DATA WILAYAH ---
             _buildSectionTitle("Data Wilayah RT"),
             _buildCard(
               children: [
@@ -131,7 +145,7 @@ class _RegisterRtScreenState extends State<RegisterRtScreen> {
 
             const SizedBox(height: 20),
             
-            // --- BAGIAN 3: KODE RW ---
+            // --- BAGIAN 4: KODE RW ---
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
@@ -149,7 +163,10 @@ class _RegisterRtScreenState extends State<RegisterRtScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _handleRegister,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.all(15)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF678267), // Hijau (Tema Logo)
+                      padding: const EdgeInsets.all(15)
+                    ),
                     child: const Text("Daftar", style: TextStyle(color: Colors.white, fontSize: 16)),
                   ),
                 ),

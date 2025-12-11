@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:math'; // 1. Import Math untuk generate kode acak
-import '../../../services/api_service.dart'; // 2. Import Service API
+import 'dart:math'; // Import Math untuk generate kode acak
+import '../../services/api_service.dart'; // Import Service API
+import '../../widgets/logo_widget.dart'; // Import Logo Widget
 
 class RegisterRwScreen extends StatefulWidget {
   const RegisterRwScreen({super.key});
@@ -20,13 +21,13 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
   
   // Data Wilayah
   final _nomorRwController = TextEditingController();
-  final _namaKetuaController = TextEditingController(); // (Opsional, biasanya sama dgn nama akun)
+  final _namaKetuaController = TextEditingController(); 
   final _alamatController = TextEditingController();
   final _kodeUnikController = TextEditingController();
 
   bool _isPasswordHidden = true;
   bool _isKonfirmasiPasswordHidden = true;
-  bool _isLoading = false; // 3. State untuk loading
+  bool _isLoading = false; 
 
   @override
   void dispose() {
@@ -136,14 +137,17 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 40),
-                Center(child: _buildLogoSection()),
-                const SizedBox(height: 32),
+                
+                // --- 1. LOGO BARU ---
+                _buildLogoSection(),
+                
+                const SizedBox(height: 30),
 
                 const Text(
                   "Pendaftaran Super Admin RW & Kode Wilayah",
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
                 // --- DATA AKUN ---
                 _buildFormCard(
@@ -193,7 +197,7 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: const Color(0xFF678267), // Sesuaikan tema hijau
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
@@ -219,7 +223,7 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
     );
   }
 
-  // --- WIDGET HELPER (SAMA SEPERTI SEBELUMNYA) ---
+  // --- WIDGET HELPER ---
 
   Widget _buildFormCard({required String title, required List<Widget> children}) {
     return Container(
@@ -307,14 +311,13 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
     );
   }
 
+  // --- BAGIAN INI YANG DIGANTI ---
   Widget _buildLogoSection() {
-    return Column(
-      children: [
-        Icon(Icons.home_work_rounded, size: 80, color: Colors.green[800]),
-        const SizedBox(height: 8),
-        Text("Manajemen RT/RW", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green[900])),
-        Text("Membangun Komunitas Cerdas", style: TextStyle(fontSize: 14, color: Colors.grey[700])),
-      ],
+    return const Center(
+      child: LogoWidget(
+        height: 120, 
+        width: 120,
+      ),
     );
   }
 
@@ -325,7 +328,7 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
         Text("Sudah Punya akun?", style: TextStyle(color: Colors.grey[700])),
         TextButton(
           onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
-          child: const Text("Login", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+          child: const Text("Login", style: TextStyle(color: const Color(0xFF678267), fontWeight: FontWeight.bold)),
         ),
       ],
     );

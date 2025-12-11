@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../services/api_service.dart';
+import '../../widgets/logo_widget.dart'; // Import Logo Widget
 
-// === HALAMAN 1: DATA DIRI (Slide 31) ===
+// === HALAMAN 1: DATA DIRI ===
 class RegisterWargaStep1 extends StatefulWidget {
   const RegisterWargaStep1({super.key});
 
@@ -53,43 +54,62 @@ class _RegisterWargaStep1State extends State<RegisterWargaStep1> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFBE6),
-      appBar: AppBar(title: const Text("Pendaftaran Akun Warga (1/2)"), backgroundColor: Colors.transparent, foregroundColor: Colors.black, elevation: 0),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            _buildInputBox("Nomor Induk Kependudukan (NIK)", _nikController, isNumber: true),
-            _buildInputBox("Nomor Kartu Keluarga", _kkController, isNumber: true),
-            _buildInputBox("Nama Lengkap (Sesuai KTP)", _namaController),
-            
-            // Input Tanggal Lahir + Icon Calendar
-            GestureDetector(
-              onTap: _selectDate,
-              child: AbsorbPointer(
-                child: TextField(
-                  controller: _tglLahirController,
-                  decoration: InputDecoration(
-                    labelText: "Tanggal Lahir",
-                    suffixIcon: const Icon(Icons.calendar_today),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    filled: true, fillColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFBE6), // Cream background
+      appBar: AppBar(
+        title: const Text("Pendaftaran Akun Warga (1/2)"), 
+        backgroundColor: Colors.transparent, 
+        foregroundColor: Colors.black, 
+        elevation: 0
+      ),
+      body: SingleChildScrollView( // Tambahkan SingleChildScrollView agar aman di layar kecil
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              
+              // --- 1. LOGO BARU DI STEP 1 ---
+              const Center(
+                child: LogoWidget(height: 180, width: 180),
+              ),
+              const SizedBox(height: 30),
+              // ------------------------------
+
+              _buildInputBox("Nomor Induk Kependudukan (NIK)", _nikController, isNumber: true),
+              _buildInputBox("Nomor Kartu Keluarga", _kkController, isNumber: true),
+              _buildInputBox("Nama Lengkap (Sesuai KTP)", _namaController),
+              
+              // Input Tanggal Lahir + Icon Calendar
+              GestureDetector(
+                onTap: _selectDate,
+                child: AbsorbPointer(
+                  child: TextField(
+                    controller: _tglLahirController,
+                    decoration: InputDecoration(
+                      labelText: "Tanggal Lahir",
+                      suffixIcon: const Icon(Icons.calendar_today),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      filled: true, fillColor: Colors.white,
+                    ),
                   ),
                 ),
               ),
-            ),
-            
-            const SizedBox(height: 30),
-            
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _goToStep2,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 15)),
-                child: const Text("Lanjut", style: TextStyle(color: Colors.white, fontSize: 16)),
+              
+              const SizedBox(height: 30),
+              
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _goToStep2,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF678267), // Hijau (Tema Logo)
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15)
+                  ),
+                  child: const Text("Lanjut", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -111,7 +131,7 @@ class _RegisterWargaStep1State extends State<RegisterWargaStep1> {
   }
 }
 
-// === HALAMAN 2: AKUN & KODE (Slide 30) ===
+// === HALAMAN 2: AKUN & KODE ===
 class RegisterWargaStep2 extends StatefulWidget {
   final String nik, noKk, nama, tglLahir;
 
@@ -142,8 +162,7 @@ class _RegisterWargaStep2State extends State<RegisterWargaStep2> {
     
     setState(() => _isLoading = true);
 
-    // Karena di desain TIDAK ADA input email, kita buat dummy email otomatis
-    // Format: username@warga.app (Biar backend tidak error)
+    // Dummy email karena form tidak minta email
     final dummyEmail = "${_usernameController.text}@warga.app";
 
     final result = await ApiService.register(
@@ -154,14 +173,14 @@ class _RegisterWargaStep2State extends State<RegisterWargaStep2> {
       tanggalLahir: widget.tglLahir,
       username: _usernameController.text,
       password: _passwordController.text,
-      email: dummyEmail, // Kirim dummy email
+      email: dummyEmail, 
       kodeInduk: _kodeRtController.text, // KODE UNIK RT
     );
 
     setState(() => _isLoading = false);
 
     if (result['success']) {
-      // Sukses, kembali ke Login (tutup semua halaman register)
+      // Sukses, kembali ke Login
       Navigator.of(context).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pendaftaran Berhasil! Silakan Login.")));
     } else {
@@ -173,46 +192,71 @@ class _RegisterWargaStep2State extends State<RegisterWargaStep2> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBE6),
-      appBar: AppBar(title: const Text("Pendaftaran Akun Warga (2/2)"), backgroundColor: Colors.transparent, foregroundColor: Colors.black, elevation: 0),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            _buildInputBox("Buat Username", _usernameController),
-            _buildInputBox("Buat Password", _passwordController, isPassword: true),
-            
-            // KODE RT WAJIB
-            TextField(
-              controller: _kodeRtController,
-              decoration: InputDecoration(
-                labelText: "* Kode Unik RT (Wajib)",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Colors.red)),
-                filled: true, fillColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Pendaftaran Akun Warga (2/2)"), 
+        backgroundColor: Colors.transparent, 
+        foregroundColor: Colors.black, 
+        elevation: 0
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              
+              // --- 2. LOGO BARU DI STEP 2 ---
+              const Center(
+                child: LogoWidget(height: 180, width: 180),
               ),
-            ),
+              const SizedBox(height: 30),
+              // ------------------------------
 
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Checkbox(value: _isChecked, onChanged: (val) => setState(() => _isChecked = val!)),
-                const Text("Saya Setuju dengan Syarat & Ketentuan", style: TextStyle(fontSize: 12)),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            _isLoading 
-              ? const CircularProgressIndicator()
-              : SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _handleDaftar,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 15)),
-                    child: const Text("Daftar", style: TextStyle(color: Colors.white, fontSize: 16)),
-                  ),
+              _buildInputBox("Buat Username", _usernameController),
+              _buildInputBox("Buat Password", _passwordController, isPassword: true),
+              
+              // KODE RT WAJIB
+              TextField(
+                controller: _kodeRtController,
+                decoration: InputDecoration(
+                  labelText: "* Kode Unik RT (Wajib)",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Colors.red)),
+                  filled: true, fillColor: Colors.white,
+                  helperText: "Minta kode ini kepada Ketua RT Anda",
+                  helperStyle: const TextStyle(color: Colors.red),
                 ),
-          ],
+              ),
+
+              const SizedBox(height: 20),
+
+              Row(
+                children: [
+                  Checkbox(
+                    value: _isChecked, 
+                    activeColor: const Color(0xFF678267),
+                    onChanged: (val) => setState(() => _isChecked = val!)
+                  ),
+                  const Expanded(child: Text("Saya Setuju dengan Syarat & Ketentuan", style: TextStyle(fontSize: 12))),
+                ],
+              ),
+
+              const SizedBox(height: 30),
+
+              _isLoading 
+                ? const CircularProgressIndicator()
+                : SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _handleDaftar,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF678267), // Hijau (Tema Logo)
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 15)
+                      ),
+                      child: const Text("Daftar", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+            ],
+          ),
         ),
       ),
     );

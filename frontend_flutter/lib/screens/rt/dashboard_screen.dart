@@ -123,19 +123,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
 
                         // KARTU PENDING (Tetap saya biarkan sebagai info statistik)
-                        cardInfo(
-                          'Menunggu Verifikasi', 
-                          _dashboardData?['pending']?.toString() ?? '0',
-                          Icons.notifications_active,
-                          Colors.orange
-                        ),
+                        //cardInfo(
+                          //'Menunggu Verifikasi', 
+                          //_dashboardData?['pending']?.toString() ?? '0',
+                          //Icons.notifications_active,
+                          //Colors.orange
+                        //),
 
-                        const SizedBox(height: 20),
+                        //const SizedBox(height: 20),
                       ],
-                    ),
+                   ),
                   ),
                 ),
-    );
+   );
   }
 
   // Widget Kartu Statistik
