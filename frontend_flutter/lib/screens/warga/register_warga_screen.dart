@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Tambahan untuk format input angka
 import '../../../services/api_service.dart';
-import '../../widgets/logo_widget.dart'; // Import Logo Widget
+import '../../widgets/logo_widget.dart';
 
-// === HALAMAN 1: DATA DIRI ===
+// === HALAMAN 1: DATA DIRI (DENGAN VALIDASI 16 DIGIT) ===
 class RegisterWargaStep1 extends StatefulWidget {
   const RegisterWargaStep1({super.key});
 
@@ -16,7 +17,6 @@ class _RegisterWargaStep1State extends State<RegisterWargaStep1> {
   final _namaController = TextEditingController();
   final _tglLahirController = TextEditingController();
 
-  // Fungsi pilih tanggal
   Future<void> _selectDate() async {
     DateTime? picked = await showDatePicker(
       context: context,
@@ -32,20 +32,42 @@ class _RegisterWargaStep1State extends State<RegisterWargaStep1> {
   }
 
   void _goToStep2() {
-    if (_nikController.text.isEmpty || _namaController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("NIK dan Nama wajib diisi!")));
+    // --- 1. VALIDASI NIK & KK WAJIB 16 DIGIT ---
+    String nik = _nikController.text.trim();
+    String kk = _kkController.text.trim();
+    String nama = _namaController.text.trim();
+    String tgl = _tglLahirController.text.trim();
+
+    if (nik.isEmpty || kk.isEmpty || nama.isEmpty || tgl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Semua data wajib diisi!"), backgroundColor: Colors.red),
+      );
       return;
     }
 
-    // Pindah ke Halaman 2 sambil bawa data
+    if (nik.length != 16) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("NIK harus terdiri dari 16 digit angka!"), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    if (kk.length != 16) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No. KK harus terdiri dari 16 digit angka!"), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    // -------------------------------------------
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => RegisterWargaStep2(
-          nik: _nikController.text,
-          noKk: _kkController.text,
-          nama: _namaController.text,
-          tglLahir: _tglLahirController.text,
+          nik: nik,
+          noKk: kk,
+          nama: nama,
+          tglLahir: tgl,
         ),
       ),
     );
@@ -54,31 +76,28 @@ class _RegisterWargaStep1State extends State<RegisterWargaStep1> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFBE6), // Cream background
+      backgroundColor: const Color(0xFFFFFBE6),
       appBar: AppBar(
         title: const Text("Pendaftaran Akun Warga (1/2)"), 
         backgroundColor: Colors.transparent, 
         foregroundColor: Colors.black, 
         elevation: 0
       ),
-      body: SingleChildScrollView( // Tambahkan SingleChildScrollView agar aman di layar kecil
+      body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             children: [
-              
-              // --- 1. LOGO BARU DI STEP 1 ---
               const Center(
                 child: LogoWidget(height: 180, width: 180),
               ),
               const SizedBox(height: 30),
-              // ------------------------------
 
-              _buildInputBox("Nomor Induk Kependudukan (NIK)", _nikController, isNumber: true),
-              _buildInputBox("Nomor Kartu Keluarga", _kkController, isNumber: true),
+              // Form dengan Validasi Panjang Karakter
+              _buildInputBox("Nomor Induk Kependudukan (NIK)", _nikController, isNumber: true, maxLength: 16),
+              _buildInputBox("Nomor Kartu Keluarga", _kkController, isNumber: true, maxLength: 16),
               _buildInputBox("Nama Lengkap (Sesuai KTP)", _namaController),
               
-              // Input Tanggal Lahir + Icon Calendar
               GestureDetector(
                 onTap: _selectDate,
                 child: AbsorbPointer(
@@ -101,7 +120,7 @@ class _RegisterWargaStep1State extends State<RegisterWargaStep1> {
                 child: ElevatedButton(
                   onPressed: _goToStep2,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF678267), // Hijau (Tema Logo)
+                    backgroundColor: const Color(0xFF678267),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 15)
                   ),
@@ -115,14 +134,18 @@ class _RegisterWargaStep1State extends State<RegisterWargaStep1> {
     );
   }
 
-  Widget _buildInputBox(String hint, TextEditingController controller, {bool isNumber = false}) {
+  Widget _buildInputBox(String hint, TextEditingController controller, {bool isNumber = false, int? maxLength}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextField(
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        maxLength: maxLength, // Membatasi input UI
+        // Hanya izinkan angka jika isNumber = true
+        inputFormatters: isNumber ? [FilteringTextInputFormatter.digitsOnly] : [],
         decoration: InputDecoration(
           labelText: hint,
+          counterText: "", // Menyembunyikan hitungan 0/16 di bawah textfield agar rapi
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           filled: true, fillColor: Colors.white,
         ),
@@ -131,7 +154,7 @@ class _RegisterWargaStep1State extends State<RegisterWargaStep1> {
   }
 }
 
-// === HALAMAN 2: AKUN & KODE ===
+// === HALAMAN 2: AKUN & KODE (LOGIC POPUP SUKSES) ===
 class RegisterWargaStep2 extends StatefulWidget {
   final String nik, noKk, nama, tglLahir;
 
@@ -159,10 +182,14 @@ class _RegisterWargaStep2State extends State<RegisterWargaStep2> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Anda harus menyetujui syarat & ketentuan")));
       return;
     }
+
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty || _kodeRtController.text.isEmpty) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Username, Password, dan Kode RT wajib diisi!")));
+      return;
+    }
     
     setState(() => _isLoading = true);
 
-    // Dummy email karena form tidak minta email
     final dummyEmail = "${_usernameController.text}@warga.app";
 
     final result = await ApiService.register(
@@ -174,15 +201,27 @@ class _RegisterWargaStep2State extends State<RegisterWargaStep2> {
       username: _usernameController.text,
       password: _passwordController.text,
       email: dummyEmail, 
-      kodeInduk: _kodeRtController.text, // KODE UNIK RT
+      kodeInduk: _kodeRtController.text,
     );
 
     setState(() => _isLoading = false);
 
     if (result['success']) {
-      // Sukses, kembali ke Login
-      Navigator.of(context).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pendaftaran Berhasil! Silakan Login.")));
+      // 1. Tampilkan pesan sukses sebentar
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Pendaftaran Berhasil! Silakan Login."),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        )
+      );
+
+      // 2. Langsung lempar ke Halaman Login & Hapus Riwayat Back Button
+      // (Jeda sedikit 1 detik biar user sempat baca pesan sukses)
+      Future.delayed(const Duration(seconds: 1), () {
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
+      });
+      // ----------------------------------------------------
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.red));
     }
@@ -203,18 +242,14 @@ class _RegisterWargaStep2State extends State<RegisterWargaStep2> {
           padding: const EdgeInsets.all(24.0),
           child: Column(
             children: [
-              
-              // --- 2. LOGO BARU DI STEP 2 ---
               const Center(
                 child: LogoWidget(height: 180, width: 180),
               ),
               const SizedBox(height: 30),
-              // ------------------------------
 
               _buildInputBox("Buat Username", _usernameController),
               _buildInputBox("Buat Password", _passwordController, isPassword: true),
               
-              // KODE RT WAJIB
               TextField(
                 controller: _kodeRtController,
                 decoration: InputDecoration(
@@ -248,7 +283,7 @@ class _RegisterWargaStep2State extends State<RegisterWargaStep2> {
                     child: ElevatedButton(
                       onPressed: _handleDaftar,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF678267), // Hijau (Tema Logo)
+                        backgroundColor: const Color(0xFF678267),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 15)
                       ),

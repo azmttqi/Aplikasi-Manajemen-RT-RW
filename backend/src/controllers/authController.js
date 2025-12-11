@@ -4,23 +4,21 @@ import pool from "../config/db.js";
 import dotenv from "dotenv";
 dotenv.config();
 
+// ==========================================
+// 1. FUNGSI REGISTER (RW, RT, WARGA)
+// ==========================================
 const registerUserByRole = (roleName) => async (req, res) => {
-  // Kita terima data LENGKAP dari Frontend sesuai desain
   const { 
-    // Data Akun (Semua Role)
+    // Data Akun
     nama_lengkap, email, username, password, 
     
-    // Data Wilayah (Khusus RW & RT)
-    nomor_rw, // ex: "05"
-    nomor_rt, // ex: "01"
-    alamat,   // Alamat sekretariat/wilayah
-    kode_wilayah_baru, // Kode unik yang DIBUAT oleh RW/RT untuk wilayahnya
+    // Data Wilayah (RW & RT)
+    nomor_rw, nomor_rt, alamat, kode_wilayah_baru,
 
-    // Data Validasi (Tiket Masuk)
-    kode_rw_induk, // Diisi RT saat daftar (Kode milik RW)
-    kode_rt_induk, // Diisi Warga saat daftar (Kode milik RT)
+    // Data Validasi
+    kode_rw_induk, kode_rt_induk,
 
-    // Data Pribadi Warga (Khusus Warga)
+    // Data Pribadi Warga
     nik, no_kk, tanggal_lahir
   } = req.body;
   
@@ -31,59 +29,43 @@ const registerUserByRole = (roleName) => async (req, res) => {
 
     // 1. Cek Role ID
     const roleRes = await client.query("SELECT id_role FROM roles WHERE nama_role = $1", [roleName]);
-    if (roleRes.rows.length === 0) {
-      throw new Error(`Role ${roleName} tidak ditemukan`);
-    }
+    if (roleRes.rows.length === 0) throw new Error(`Role ${roleName} tidak ditemukan`);
     const id_role = roleRes.rows[0].id_role;
 
-    // 2. LOGIKA PER ROLE (Sesuai Desain Frontend)
-    let id_wilayah_induk = null; // ID RW (untuk RT) atau ID RT (untuk Warga)
+    // 2. LOGIKA PER ROLE
+    let id_wilayah_induk = null;
 
     // === JIKA RW ===
     if (roleName === 'RW') {
-        // RW wajib isi data wilayah
-        if (!nomor_rw || !kode_wilayah_baru) {
-             return res.status(400).json({ message: "Nomor RW dan Kode Wilayah wajib diisi!" });
-        }
-        // Cek apakah Kode Wilayah sudah dipakai orang lain
+        if (!nomor_rw || !kode_wilayah_baru) return res.status(400).json({ message: "Nomor RW dan Kode Wilayah wajib diisi!" });
         const cekKode = await client.query("SELECT id_rw FROM wilayah_rw WHERE kode_rw = $1", [kode_wilayah_baru]);
         if(cekKode.rows.length > 0) return res.status(400).json({ message: "Kode Unik Wilayah sudah terpakai!" });
     } 
-    
     // === JIKA RT ===
     else if (roleName === 'RT') {
-        // RT wajib masukkan Kode RW Induk (Validasi)
         if (!kode_rw_induk) return res.status(400).json({ message: "Wajib memasukkan Kode Unik RW!" });
-        
-        // Cek Kode RW Induk
         const rwCheck = await client.query("SELECT id_rw FROM wilayah_rw WHERE kode_rw = $1", [kode_rw_induk]);
         if (rwCheck.rows.length === 0) return res.status(400).json({ message: "Kode RW tidak ditemukan!" });
         
-        id_wilayah_induk = rwCheck.rows[0].id_rw; // Simpan ID RW
+        id_wilayah_induk = rwCheck.rows[0].id_rw;
 
-        // Cek Kode Wilayah Baru (yang dibuat RT untuk warganya nanti)
         const cekKode = await client.query("SELECT id_rt FROM wilayah_rt WHERE kode_rt = $1", [kode_wilayah_baru]);
         if(cekKode.rows.length > 0) return res.status(400).json({ message: "Kode Unik RT sudah terpakai!" });
     }
-
     // === JIKA WARGA ===
     else if (roleName === 'Warga') {
-        // Warga wajib masukkan Kode RT Induk
         if (!kode_rt_induk) return res.status(400).json({ message: "Wajib memasukkan Kode Unik RT!" });
 
-        // Cek Kode RT Induk
         const rtCheck = await client.query("SELECT id_rt FROM wilayah_rt WHERE kode_rt = $1", [kode_rt_induk]);
         if (rtCheck.rows.length === 0) return res.status(400).json({ message: "Kode RT tidak ditemukan!" });
         
-        id_wilayah_induk = rtCheck.rows[0].id_rt; // Simpan ID RT
+        id_wilayah_induk = rtCheck.rows[0].id_rt;
         
-        // Cek NIK Unik
         const cekNik = await client.query("SELECT id_warga FROM warga WHERE nik = $1", [nik]);
         if (cekNik.rows.length > 0) return res.status(400).json({ message: "NIK sudah terdaftar!" });
     }
 
-    // 3. Insert ke Tabel Pengguna (Akun Login)
-    // Cek duplikat email/username
+    // 3. Insert ke Tabel Pengguna
     const checkUser = await client.query("SELECT id_pengguna FROM pengguna WHERE email = $1 OR username = $2", [email, username]);
     if (checkUser.rows.length > 0) {
         await client.query('ROLLBACK');
@@ -91,8 +73,7 @@ const registerUserByRole = (roleName) => async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    // Ambil status default (ID 1 = Diajukan)
-    let statusId = 1; 
+    let statusId = 1; // Default ID status
     const statusRes = await client.query("SELECT id FROM status_verifikasi WHERE nama = 'Diajukan' LIMIT 1");
     if (statusRes.rows.length > 0) statusId = statusRes.rows[0].id;
 
@@ -103,26 +84,21 @@ const registerUserByRole = (roleName) => async (req, res) => {
     );
     const userId = insertUser.rows[0].id_pengguna;
 
-    // 4. INSERT DATA TAMBAHAN (Sesuai Desain)
-
+    // 4. INSERT DATA TAMBAHAN
     if (roleName === 'RW') {
-        // Insert Data Wilayah RW
         await client.query(
             `INSERT INTO wilayah_rw (nama_rw, kode_rw, alamat_rw, id_pengguna) 
              VALUES ($1, $2, $3, $4, $5)`,
             [`RW ${nomor_rw}`, kode_wilayah_baru, alamat, userId]
         );
-
     } else if (roleName === 'RT') {
-        // Insert Data Wilayah RT (Link ke RW Induk)
         await client.query(
             `INSERT INTO wilayah_rt (kode_rt, alamat_rt, id_rw, id_pengguna, nomor_rt) 
              VALUES ($1, $2, $3, $4)`,
             [kode_wilayah_baru, alamat, id_wilayah_induk, userId], nomor_rt
         );
-
     } else if (roleName === 'Warga') {
-        // Insert Data Warga Lengkap (Link ke RT Induk)
+        // PERHATIKAN: Disini status_verifikasi diisi 'pending'
         await client.query(
             `INSERT INTO warga (nama_lengkap, nik, no_kk, tanggal_lahir, id_rt, pengguna_id, status_verifikasi) 
              VALUES ($1, $2, $3, $4, $5, $6, 'pending')`,
@@ -130,7 +106,7 @@ const registerUserByRole = (roleName) => async (req, res) => {
         );
     }
 
-    await client.query('COMMIT'); // Simpan Permanen
+    await client.query('COMMIT');
 
     res.status(201).json({
       message: `Registrasi ${roleName} berhasil`,
@@ -147,7 +123,7 @@ const registerUserByRole = (roleName) => async (req, res) => {
 };
 
 // ==========================================
-// 2. FUNGSI LOGIN (SAMA SEPERTI SEBELUMNYA)
+// 2. FUNGSI LOGIN
 // ==========================================
 const login = async (req, res) => {
   try {
@@ -182,21 +158,20 @@ const login = async (req, res) => {
   }
 };
 
-// Export Function
 export const registerRW = registerUserByRole("RW");
 export const registerRT = registerUserByRole("RT");
 export const registerWarga = registerUserByRole("Warga");
 export { login };
 
-// getMe
 
+// ============================================================
+// 3. GET ME (PROFIL) - SUDAH DIPERBAIKI (ADD STATUS)
+// ============================================================
 export const getMe = async (req, res) => {
   try {
     const userId = req.user.id_pengguna;
     
-    // 1. QUERY DIPERBAIKI: 
-    // - Hapus 'nama_lengkap' (Ganti jadi ambil username)
-    // - Ganti 'role' jadi 'id_role' (Sesuai nama kolom di DB)
+    // 1. Ambil data dasar User
     const userQuery = await pool.query(
       "SELECT email, username, id_role FROM pengguna WHERE id_pengguna = $1", 
       [userId]
@@ -206,46 +181,73 @@ export const getMe = async (req, res) => {
     
     const userData = userQuery.rows[0];
     
-    // 2. Mapping Role ID ke Nama Role (Agar di Frontend muncul "RW", bukan "1")
+    // 2. Mapping Role ID ke Nama Role
     let roleName = "User";
     if (userData.id_role === 1) roleName = "RW";
     else if (userData.id_role === 2) roleName = "RT";
     else if (userData.id_role === 3) roleName = "Warga";
 
-    let wilayahData = {
-        nomor_wilayah: "Belum Ada", 
+    // Data Default Response
+    let responseData = {
+        nama_lengkap: userData.username, // Default kalau belum ada data nama asli
+        username: userData.username,
+        email: userData.email,
+        role: roleName,
+        status: "pending", // Default status
+        alamat: "Belum diset",
+        nomor_wilayah: "Belum Ada",
         kode_unik: "-"
     };
 
-    // 3. Ambil Data Wilayah (Gunakan roleName yang sudah di-mapping)
+    // 3. Ambil Data Detail Berdasarkan Role
     if (roleName === 'RW') {
-        const rwQuery = await pool.query("SELECT nama_rw, kode_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
+        const rwQuery = await pool.query("SELECT nama_rw, kode_rw, alamat_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
         if (rwQuery.rows.length > 0) {
-            wilayahData = {
-                nomor_wilayah: rwQuery.rows[0].nama_rw, 
-                kode_unik: rwQuery.rows[0].kode_rw
-            };
+            responseData.nomor_wilayah = rwQuery.rows[0].nama_rw; 
+            responseData.kode_unik = rwQuery.rows[0].kode_rw;
+            responseData.alamat = rwQuery.rows[0].alamat_rw;
+            responseData.status = "verified"; // RW dianggap auto-verified (bisa disesuaikan)
         }
-    } else if (roleName === 'RT') {
-        const rtQuery = await pool.query("SELECT nomor_rt, kode_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
+    } 
+    else if (roleName === 'RT') {
+        const rtQuery = await pool.query("SELECT nomor_rt, kode_rt, alamat_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
         if (rtQuery.rows.length > 0) {
-            wilayahData = {
-                nomor_wilayah: rtQuery.rows[0].nomor_rt,
-                kode_unik: rtQuery.rows[0].kode_rt
-            };
+            responseData.nomor_wilayah = rtQuery.rows[0].nomor_rt;
+            responseData.kode_unik = rtQuery.rows[0].kode_rt;
+            responseData.alamat = rtQuery.rows[0].alamat_rt;
+            responseData.status = "verified"; // RT dianggap auto-verified
+        }
+    } 
+    else if (roleName === 'Warga') {
+        // --- INI PERBAIKAN PENTING UNTUK WARGA ---
+        // Kita ambil data warga termasuk STATUS_VERIFIKASI dan JOIN ke tabel RT untuk dapat alamat domisili
+        const wargaQuery = await pool.query(
+            `SELECT w.nama_lengkap, w.nik, w.status_verifikasi, rt.alamat_rt 
+             FROM warga w
+             LEFT JOIN wilayah_rt rt ON w.id_rt = rt.id_rt
+             WHERE w.pengguna_id = $1`, 
+            [userId]
+        );
+
+        if (wargaQuery.rows.length > 0) {
+            const dataWarga = wargaQuery.rows[0];
+            
+            // Override data default dengan data real warga
+            responseData.nama_lengkap = dataWarga.nama_lengkap;
+            responseData.nik = dataWarga.nik;
+            
+            // Ambil Alamat dari RT (Domisili)
+            responseData.alamat = dataWarga.alamat_rt || "Alamat RT tidak ditemukan";
+            
+            // KIRIM STATUS KE FLUTTER ('pending', 'verified', 'rejected')
+            responseData.status = dataWarga.status_verifikasi; 
         }
     }
 
-    // 4. Kirim Response (Mapping username jadi nama_lengkap agar Frontend tidak error)
+    // 4. Kirim Response
     res.json({
       success: true,
-      data: {
-        nama_lengkap: userData.username, // <--- PENTING: Pakai username sebagai nama
-        username: userData.username,
-        email: userData.email,
-        role: roleName, // Kirim "RW"/"RT" ke frontend
-        ...wilayahData
-      }
+      data: responseData
     });
 
   } catch (err) {
@@ -254,9 +256,9 @@ export const getMe = async (req, res) => {
   }
 };
 
-/* ============================================================
-   ⚙️ UPDATE PROFIL (FINAL FIX: password_hash)
-============================================================ */
+// ============================================================
+// 4. UPDATE PROFIL
+// ============================================================
 export const updateProfile = async (req, res) => {
   const { email, username, currentPassword, newPassword } = req.body;
   const userId = req.user.id_pengguna;
@@ -264,32 +266,22 @@ export const updateProfile = async (req, res) => {
   console.log("➡️ Request Update Profil dari User ID:", userId);
 
   try {
-    // 1. Ambil data user
     const userResult = await pool.query("SELECT * FROM pengguna WHERE id_pengguna = $1", [userId]);
     const user = userResult.rows[0];
 
     if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
 
-    // --- FIX: Gunakan kolom 'password_hash' ---
     const dbPassword = user.password_hash; 
 
-    // 2. LOGIKA CEK PASSWORD
+    // Cek Password Lama
     if (dbPassword) {
-      if (!currentPassword) {
-        return res.status(400).json({ message: "Password lama wajib diisi!" });
-      }
-      
+      if (!currentPassword) return res.status(400).json({ message: "Password lama wajib diisi!" });
       const isMatch = await bcrypt.compare(currentPassword, dbPassword);
-      if (!isMatch) {
-        return res.status(400).json({ message: "Password lama salah!" });
-      }
-    } else {
-      console.log("⚠️ Peringatan: User ini kolom password_hash kosong. Mengizinkan reset.");
+      if (!isMatch) return res.status(400).json({ message: "Password lama salah!" });
     }
 
-    // 3. Siapkan Password Baru
-    let finalPassword = dbPassword; // Default: pakai yg lama
-    
+    // Hash Password Baru
+    let finalPassword = dbPassword;
     if (newPassword && newPassword.trim() !== "") {
       const salt = await bcrypt.genSalt(10);
       finalPassword = await bcrypt.hash(newPassword, salt);
@@ -298,7 +290,7 @@ export const updateProfile = async (req, res) => {
       return res.status(400).json({ message: "Akun Anda belum ada password. Mohon isi password baru!" });
     }
 
-    // 4. Update Database (Ganti kolom 'password_hash')
+    // Update DB
     await pool.query(
       `UPDATE pengguna 
        SET email = $1, username = $2, password_hash = $3 
@@ -306,11 +298,7 @@ export const updateProfile = async (req, res) => {
       [email || user.email, username || user.username, finalPassword, userId]
     );
 
-    console.log("✅ Profil Berhasil Diupdate (password_hash)");
-    res.json({
-      success: true,
-      message: "Profil berhasil diperbarui!"
-    });
+    res.json({ success: true, message: "Profil berhasil diperbarui!" });
 
   } catch (err) {
     console.error("Update Profil Error:", err.message);

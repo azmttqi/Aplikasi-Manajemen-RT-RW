@@ -1,7 +1,8 @@
-// main.dart
+// lib/main.dart
 
 import 'package:flutter/material.dart';
 import 'screens/auth/splash_screen.dart'; 
+import 'screens/auth/login_page.dart'; // <--- 1. JANGAN LUPA IMPORT INI
 
 void main() {
   runApp(const MyApp());
@@ -34,8 +35,21 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
+      
+      // Halaman pertama yang dibuka
       home: const SplashScreen(),
+      
+      // Hilangkan banner debug
       debugShowCheckedModeBanner: false,
+
+      // === 2. TAMBAHKAN BAGIAN INI (DAFTAR RUTE) ===
+      routes: {
+        // Nama rute : (context) => NamaClassHalamannya()
+        '/login': (context) => const LoginPage(), 
+        // Nanti kalau ada halaman lain, daftarkan di sini juga.
+        // Contoh: '/dashboard': (context) => const DashboardScreen(),
+      },
+      // ============================================
     );
   }
 }
