@@ -76,8 +76,8 @@ const seedDatabase = async () => {
     const idRtUser = rtUser.rows[0].id_pengguna;
 
     const rtWilayah = await client.query(`
-      INSERT INTO wilayah_rt (kode_rt, alamat_rt, id_rw, id_pengguna)
-      VALUES ('005', 'Jl. Melati No 5', $1, $2)
+      INSERT INTO wilayah_rt (kode_rt, nomor_rt, alamat_rt, id_rw, id_pengguna) 
+      VALUES ('RT-KODE-005', '005', 'Jl. Melati No 5', $1, $2)
       RETURNING id_rt
     `, [idRwWilayah, idRtUser]);
 

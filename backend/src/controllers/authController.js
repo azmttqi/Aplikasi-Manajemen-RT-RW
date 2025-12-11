@@ -109,16 +109,16 @@ const registerUserByRole = (roleName) => async (req, res) => {
         // Insert Data Wilayah RW
         await client.query(
             `INSERT INTO wilayah_rw (nama_rw, kode_rw, alamat_rw, id_pengguna) 
-             VALUES ($1, $2, $3, $4)`,
+             VALUES ($1, $2, $3, $4, $5)`,
             [`RW ${nomor_rw}`, kode_wilayah_baru, alamat, userId]
         );
 
     } else if (roleName === 'RT') {
         // Insert Data Wilayah RT (Link ke RW Induk)
         await client.query(
-            `INSERT INTO wilayah_rt (kode_rt, alamat_rt, id_rw, id_pengguna) 
+            `INSERT INTO wilayah_rt (kode_rt, alamat_rt, id_rw, id_pengguna, nomor_rt) 
              VALUES ($1, $2, $3, $4)`,
-            [kode_wilayah_baru, alamat, id_wilayah_induk, userId]
+            [kode_wilayah_baru, alamat, id_wilayah_induk, userId], nomor_rt
         );
 
     } else if (roleName === 'Warga') {
@@ -227,11 +227,11 @@ export const getMe = async (req, res) => {
             };
         }
     } else if (roleName === 'RT') {
-        const rtQuery = await pool.query("SELECT kode_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
+        const rtQuery = await pool.query("SELECT nomor_rt, kode_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
         if (rtQuery.rows.length > 0) {
             wilayahData = {
-                nomor_wilayah: "RT " + rtQuery.rows[0].kode_rt,
-                kode_unik: "-" 
+                nomor_wilayah: rtQuery.rows[0].nomor_rt,
+                kode_unik: rtQuery.rows[0].kode_rt
             };
         }
     }
