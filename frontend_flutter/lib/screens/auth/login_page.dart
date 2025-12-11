@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
-import '../rw/super_admin_dashboard.dart';
-import '../rt/dashboard_screen.dart';
 import '../rw/main_screen.dart';
 import '../rt/rt_main_screen.dart';
-import '../warga/warga_dashboard.dart';
 import '../warga/warga_main_screen.dart';
 
-// TODO: import dashboard RT / Warga kalau sudah ada
+// Import Widget Logo (Pastikan file ini sudah dibuat di lib/widgets/logo_widget.dart)
+import '../../widgets/logo_widget.dart'; 
 
 import './register_screen.dart';
 import './forgot_password_screen.dart';
@@ -25,7 +23,6 @@ class _LoginPageState extends State<LoginPage> {
   bool _showError = false;
   String _errorText = "username atau password salah.";
 
-  // controller input
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -37,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
       _showError = false;
     });
 
-    final identifier = _usernameController.text.trim(); // username / email
+    final identifier = _usernameController.text.trim();
     final password = _passwordController.text;
 
     if (identifier.isEmpty || password.isEmpty) {
@@ -61,16 +58,15 @@ class _LoginPageState extends State<LoginPage> {
           context,
           MaterialPageRoute(builder: (_) => RwMainScreen()),
         );
-      // Di login_page.dart
       } else if (role == 'RT') {
         Navigator.pushReplacement(
           context, 
-          MaterialPageRoute(builder: (context) => const RtMainScreen()), // <--- Pastikan ini
+          MaterialPageRoute(builder: (context) => const RtMainScreen()),
         );
       } else if (role == "Warga") {
         Navigator.pushReplacement(
           context, 
-          MaterialPageRoute(builder: (context) => const WargaMainScreen()), // <--- Pastikan ini
+          MaterialPageRoute(builder: (context) => const WargaMainScreen()),
         );
       } else {
         setState(() {
@@ -101,7 +97,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // footer tetap sama
+      backgroundColor: Colors.white, // Tambahkan background putih bersih
       bottomNavigationBar: Container(
         height: 50,
         color: const Color(0xFF678267),
@@ -115,124 +111,110 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 60),
-
-              // logo & judul
-              _buildLogoSection(),
-              const SizedBox(height: 40),
-
-              // --- Username (yg dikirim sebagai identifier) ---
-              TextFormField(
-                controller: _usernameController,
-                decoration: const InputDecoration(
-                  labelText: "Username",
-                  hintText: "masukan username anda",
-                  prefixIcon: Icon(Icons.person_outline_rounded),
+      body: Center( // Tambahkan Center agar konten di tengah vertikal
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                
+                // --- BAGIAN LOGO (DIPERBAIKI) ---
+                // Kita gunakan LogoWidget agar seragam.
+                // Jika belum buat widgetnya, ganti baris ini dengan Image.asset(...)
+                const Center(
+                  child: LogoWidget(
+                    height: 220, // Ukuran logo di halaman login
+                    width: 220,
+                  ),
                 ),
-                keyboardType: TextInputType.emailAddress,
-              ),
+                // -------------------------------
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 0),
 
-              // --- Password ---
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _isPasswordHidden,
-                decoration: InputDecoration(
-                  labelText: "Password",
-                  hintText: "masukan password anda",
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordHidden
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
+                // --- Username ---
+                TextFormField(
+                  controller: _usernameController,
+                  decoration: const InputDecoration(
+                    labelText: "Username / Email",
+                    hintText: "Masukkan username anda",
+                    prefixIcon: Icon(Icons.person_outline_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordHidden = !_isPasswordHidden;
-                      });
-                    },
                   ),
+                  keyboardType: TextInputType.emailAddress,
                 ),
-              ),
 
-              const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-              // error banner
-              if (_showError) _buildErrorBanner(),
-
-              const SizedBox(height: 24),
-
-              // --- Tombol Login ---
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                ),
-                onPressed: _isLoading ? null : _handleLogin,
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text(
-                        "Login",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                // --- Password ---
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _isPasswordHidden,
+                  decoration: InputDecoration(
+                    labelText: "Password",
+                    hintText: "Masukkan password anda",
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordHidden
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
                       ),
-              ),
+                      onPressed: () {
+                        setState(() {
+                          _isPasswordHidden = !_isPasswordHidden;
+                        });
+                      },
+                    ),
+                  ),
+                ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 12),
 
-              // Lupa password & daftar
-              _buildFooterLinks(),
-            ],
+                if (_showError) _buildErrorBanner(),
+
+                const SizedBox(height: 24),
+
+                // --- Tombol Login ---
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF678267), // Sesuaikan warna dengan tema (Hijau)
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                  onPressed: _isLoading ? null : _handleLogin,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text(
+                          "Login",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+
+                const SizedBox(height: 24),
+
+                _buildFooterLinks(),
+              ],
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildLogoSection() {
-    return Column(
-      children: [
-        Icon(
-          Icons.home_work_rounded,
-          size: 80,
-          color: Colors.green[800],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          "Manajemen RT/RW",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.green[900],
-          ),
-        ),
-        Text(
-          "Membangun Komunitas Cerdas",
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[700],
-          ),
-        ),
-      ],
     );
   }
 
@@ -277,7 +259,7 @@ class _LoginPageState extends State<LoginPage> {
           },
           child: const Text(
             "Lupa Password?",
-            style: TextStyle(color: Colors.blue, fontSize: 14),
+            style: TextStyle(color: Color(0xFF678267), fontSize: 14),
           ),
         ),
         Text(
@@ -296,7 +278,7 @@ class _LoginPageState extends State<LoginPage> {
           child: const Text(
             "Daftar Sekarang",
             style: TextStyle(
-              color: Colors.blue,
+              color: Color(0xFF678267),
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),

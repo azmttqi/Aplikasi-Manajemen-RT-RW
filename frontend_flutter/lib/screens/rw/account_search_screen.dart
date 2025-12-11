@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async'; // Untuk Timer (Debounce search)
 import '../../services/api_service.dart'; // Import Service API
 import 'DetailAkunPage.dart'; 
+import '../../widgets/logo_widget.dart'; // Import Logo Widget
 
 class AccountSearchScreen extends StatefulWidget {
   const AccountSearchScreen({super.key});
@@ -105,25 +106,12 @@ void _navigateToDetail(Map<String, dynamic> data) {
       child: Column(
         children: [
           // --- HEADER (PERBAIKAN WARNA) ---
-          Container(
-            color: backgroundColor, // <--- GANTI INI (Tadinya Colors.white)
-            padding: const EdgeInsets.only(top: 40.0, bottom: 20.0),
-            width: double.infinity,
-            child: Column(
-              children: [
-                const Icon(Icons.home_work, color: Colors.green, size: 40), 
-                const SizedBox(height: 5),
-                const Text(
-                  'Manajemen RT/RW', 
-                  style: TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold)
-                ),
-                const Text(
-                  'Membangun Komunitas Cerdas', 
-                  style: TextStyle(color: Colors.green, fontSize: 10)
-                ),
-              ],
-            ),
-          ),
+          const Center(
+            child: LogoWidget(
+              height: 180, 
+                 width: 180,
+                    ),
+                      ),
           
           // --- JUDUL & SEARCH BAR ---
           Expanded(

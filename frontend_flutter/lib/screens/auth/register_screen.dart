@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 // --- IMPORT FILE HALAMAN REGISTRASI PERAN ---
-// Pastikan path folder-nya sesuai dengan project kamu
 import '../rw/register_rw_screen.dart'; 
 import '../rt/register_rt_screen.dart'; 
 import '../warga/register_warga_screen.dart';
+
+// Import Logo Widget
+import '../../widgets/logo_widget.dart';
 
 // Enum untuk melacak peran yang dipilih
 enum UserRole { rw, rt, warga }
@@ -23,7 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFBE6), // Background cream
+      backgroundColor: Colors.white, // Ganti putih agar logo menyatu (opsional)
       
       // Footer Hak Cipta
       bottomNavigationBar: Container(
@@ -49,7 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               const SizedBox(height: 60),
 
-              // --- 1. Logo ---
+              // --- 1. Logo (SUDAH DIPERBAIKI) ---
               _buildLogoSection(),
 
               const SizedBox(height: 40),
@@ -84,7 +86,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // --- 3. Tombol Lanjut (NAVIGASI UTAMA) ---
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: const Color(0xFF678267), // Sesuaikan dengan tema hijau
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -154,10 +156,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.withOpacity(0.05) : Colors.white,
+          // Ganti background selection jadi hijau muda biar serasi
+          color: isSelected ? const Color(0xFF678267).withOpacity(0.1) : Colors.white,
           borderRadius: BorderRadius.circular(12.0),
           border: Border.all(
-            color: isSelected ? Colors.blue : Colors.grey[300]!,
+            color: isSelected ? const Color(0xFF678267) : Colors.grey[300]!,
             width: isSelected ? 2.0 : 1.0,
           ),
         ),
@@ -166,7 +169,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Icon(
               Icons.person_outline_rounded,
               size: 30,
-              color: isSelected ? Colors.blue : Colors.grey[600],
+              color: isSelected ? const Color(0xFF678267) : Colors.grey[600],
             ),
             const SizedBox(width: 16),
             // Expanded agar teks tidak overflow
@@ -179,7 +182,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.blue : Colors.black87,
+                      color: isSelected ? const Color(0xFF678267) : Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -195,7 +198,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             // Tanda Centang jika dipilih
             if (isSelected)
-              const Icon(Icons.check_circle, color: Colors.blue),
+              const Icon(Icons.check_circle, color: Color(0xFF678267)),
           ],
         ),
       ),
@@ -219,7 +222,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: const Text(
             "Login",
             style: TextStyle(
-              color: Colors.blue,
+              color: Color(0xFF678267),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -228,32 +231,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Widget untuk Logo
+  // --- BAGIAN INI YANG DIUBAH (PAKAI LOGO BARU) ---
   Widget _buildLogoSection() {
-    return Column(
-      children: [
-        Icon(
-          Icons.home_work_rounded,
-          size: 80,
-          color: Colors.green[800],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          "Manajemen RT/RW",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.green[900],
-          ),
-        ),
-        Text(
-          "Membangun Komunitas Cerdas",
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[700],
-          ),
-        ),
-      ]
+    return const Center(
+      child: LogoWidget(
+        height: 180, // Sesuaikan ukuran
+        width: 180,
+      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import 'form_pengajuan_screen.dart';
 import 'riwayat_pengajuan_screen.dart';
+import '../../widgets/logo_widget.dart'; // Import Logo Widget
 // import 'warga_detail_screen.dart'; // (Nanti buat file ini)
 
 class WargaDashboard extends StatefulWidget {
@@ -49,18 +50,12 @@ class _WargaDashboardState extends State<WargaDashboard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // --- 1. HEADER LOGO ---
-              Center(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 10),
-                    const Icon(Icons.home_work_rounded, size: 50, color: Colors.green),
-                    const SizedBox(height: 5),
-                    Text('Manajemen RT/RW', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
-                    const Text('Membangun Komunitas Cerdas', style: TextStyle(fontSize: 10, color: Colors.orange)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 30),
+              const Center(
+                child: LogoWidget(
+                  height: 180, 
+                   width: 180,
+                 ),
+               ),
 
               // --- 2. SAPAAN ---
               Text(

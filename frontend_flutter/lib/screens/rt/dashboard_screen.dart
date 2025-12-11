@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../services/api_service.dart'; // Import API Service
+import '../../services/api_service.dart'; 
+import '../../widgets/logo_widget.dart'; // Import Logo Widget
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -9,7 +10,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // State untuk data dashboard
   bool _isLoading = true;
   Map<String, dynamic>? _dashboardData;
   String? _errorMessage;
@@ -17,10 +17,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchData(); // Panggil data saat halaman pertama kali dibuka
+    _fetchData(); 
   }
 
-  // Fungsi mengambil data dari Backend
   Future<void> _fetchData() async {
     setState(() {
       _isLoading = true;
@@ -53,11 +52,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F2E5), // Warna background cream
+      backgroundColor: const Color(0xFFF8F2E5), // Background Cream
       
-      // ❌ APPBAR DIHAPUS (Supaya Header Logo menyatu dengan background)
-      // ❌ BOTTOM NAVIGATION DIHAPUS (Supaya tidak double dengan Main Screen)
-
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
@@ -81,34 +77,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         
-                        // --- 1. HEADER LOGO (BARU) ---
-                        // Ini yang membuat kartu statistik turun ke bawah
-                        Center(
-                          child: Column(
-                            children: [
-                              const SizedBox(height: 20),
-                              const Icon(Icons.home_work_rounded, size: 70, color: Colors.green),
-                              const SizedBox(height: 10),
-                              const Text(
-                                'Manajemen RT/RW',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
-                                ),
-                              ),
-                              Text(
-                                'Membangun Komunitas Cerdas',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.green[800],
-                                ),
-                              ),
-                            ],
+                        // --- 1. HEADER LOGO ---
+                        const Center(
+                          child: LogoWidget(
+                            height: 180, 
+                            width: 180,
                           ),
                         ),
 
-                        const SizedBox(height: 40), // Jarak pemisah
+                        const SizedBox(height: 0), 
 
                         // --- 2. JUDUL ---
                         const Text(
@@ -127,7 +104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         
                         const SizedBox(height: 20),
                         
-                        // --- 3. KARTU STATISTIK (Style Lama Anda) ---
+                        // --- 3. KARTU STATISTIK ---
                         
                         // KARTU JUMLAH WARGA
                         cardInfo(
@@ -142,6 +119,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           'Jumlah KK', 
                           _dashboardData?['total_kk']?.toString() ?? '0',
                           Icons.folder_shared,
+                          Colors.green 
+                        ),
+
+                        // KARTU PENDING (Tetap saya biarkan sebagai info statistik)
+                        cardInfo(
+                          'Menunggu Verifikasi', 
+                          _dashboardData?['pending']?.toString() ?? '0',
+                          Icons.notifications_active,
                           Colors.orange
                         ),
 
@@ -153,14 +138,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Widget Style Lama Anda (Saya rapikan sedikit biar makin cantik)
+  // Widget Kartu Statistik
   Widget cardInfo(String title, String value, IconData icon, Color color) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 15), // Jarak antar kartu
+      margin: const EdgeInsets.only(bottom: 15), 
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15), // Radius lebih halus
+        borderRadius: BorderRadius.circular(15), 
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),

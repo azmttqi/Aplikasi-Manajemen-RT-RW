@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+// Import Widget Logo Baru
+import '../../widgets/logo_widget.dart'; 
 
 class ForgotPasswordScreen extends StatelessWidget {
   const ForgotPasswordScreen({super.key});
@@ -6,6 +8,8 @@ class ForgotPasswordScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // Background putih bersih
+      
       // Footer yang sama
       bottomNavigationBar: Container(
         height: 50,
@@ -29,10 +33,16 @@ class ForgotPasswordScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 60),
 
-              // --- 1. Logo (sama seperti login) ---
-              _buildLogoSection(),
+              // --- 1. Logo (SUDAH DIPERBAIKI) ---
+              // Menggunakan LogoWidget agar konsisten
+              const Center(
+                child: LogoWidget(
+                  height: 200,
+                  width: 200,
+                ),
+              ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 0),
 
               // --- 2. Judul ---
               const Text(
@@ -53,7 +63,7 @@ class ForgotPasswordScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.orange[800], // Warna oranye
+                  color: Colors.grey[700], // Warna abu-abu agar lebih elegan
                 ),
               ),
 
@@ -61,9 +71,13 @@ class ForgotPasswordScreen extends StatelessWidget {
 
               // --- 4. Input Email ---
               TextFormField(
-                // Tema styling sudah diatur di main.dart
                 decoration: const InputDecoration(
-                  hintText: "Alamat Email Terdaftar",
+                  labelText: "Alamat Email",
+                  hintText: "Masukkan email terdaftar",
+                  prefixIcon: Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
                 ),
                 keyboardType: TextInputType.emailAddress,
               ),
@@ -73,8 +87,8 @@ class ForgotPasswordScreen extends StatelessWidget {
               // --- 5. Tombol Kirim Tautan ---
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue, // Warna biru
-                  foregroundColor: Colors.white, // Warna teks putih
+                  backgroundColor: const Color(0xFF678267), // Ubah jadi HIJAU (Tema Logo)
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.0),
@@ -95,15 +109,15 @@ class ForgotPasswordScreen extends StatelessWidget {
               // --- 6. Link Kembali ke Login ---
               TextButton(
                 onPressed: () {
-                  // Aksi ini akan menutup halaman ini
-                  // dan kembali ke halaman sebelumnya (Login)
+                  // Kembali ke halaman sebelumnya (Login)
                   Navigator.pop(context);
                 },
-                child: Text(
+                child: const Text(
                   "Kembali ke Halaman Login",
                   style: TextStyle(
-                    color: Colors.grey[700],
+                    color: Color(0xFF678267), // Ubah jadi Hijau juga
                     fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -111,36 +125,6 @@ class ForgotPasswordScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  // Widget terpisah untuk bagian Logo
-  // (Sama seperti di login_page.dart)
-  Widget _buildLogoSection() {
-    return Column(
-      children: [
-        Icon(
-          Icons.home_work_rounded,
-          size: 80,
-          color: Colors.green[800],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          "Manajemen RT/RW",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.green[900],
-          ),
-        ),
-        Text(
-          "Membangun Komunitas Cerdas",
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[700],
-          ),
-        ),
-      ],
     );
   }
 }

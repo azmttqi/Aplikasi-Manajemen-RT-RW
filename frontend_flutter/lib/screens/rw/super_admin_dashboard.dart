@@ -5,6 +5,7 @@ import 'account_search_screen.dart';
 import '../../utils/global_keys.dart';
 import 'StatistikPerRtScreen.dart';
 import 'main_screen.dart';
+import '../../widgets/logo_widget.dart'; // Import Logo Widget
 
 
 class SuperAdminDashboard extends StatefulWidget {
@@ -126,17 +127,13 @@ void _navigateToDetail(String title, String value) {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // --- Header ---
-                          Center(
-                            child: Column(
-                              children: [
-                                const Icon(Icons.home_work, size: 60, color: Color(0xFF4CAF50)),
-                                const SizedBox(height: 5),
-                                Text('Manajemen RT/RW', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
-                                const Text('Membangun Komunitas Cerdas', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                              ],
-                            ),
+                          const Center(
+                          child: LogoWidget(
+                            height: 180, 
+                            width: 180,
                           ),
-                          const SizedBox(height: 40),
+                        ),
+                          const SizedBox(height: 0),
 
                           const Text('Dashboard Super Admin', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
                           const SizedBox(height: 4),
