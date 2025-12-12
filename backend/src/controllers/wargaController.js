@@ -2,23 +2,63 @@
 import pool from "../config/db.js";
 
 /* ============================================================
-   ➕ TAMBAH WARGA
+   ➕ TAMBAH WARGA (VERSI FIX & DEBUG)
 ============================================================ */
 export const addWarga = async (req, res) => {
-  const { nama_lengkap, nik, no_kk, id_rt } = req.body;
+  // 1. Debugging: Cek data apa yang dikirim Frontend
+  console.log("🔥 [DEBUG] Request Body:", req.body);
+  console.log("👤 [DEBUG] User Login:", req.user);
+
+  let { nama_lengkap, nik, no_kk, id_rt } = req.body;
+
   try {
+    // 2. LOGIKA OTOMATIS: Jika id_rt kosong, ambil dari user yang login (RT)
+    if (!id_rt) {
+      console.log("⚠️ id_rt tidak dikirim frontend, mencoba ambil dari User Login...");
+      
+      const userId = req.user.id_pengguna;
+      
+      // Cari RT ID berdasarkan user login
+      const rtCheck = await pool.query(
+        "SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1", 
+        [userId]
+      );
+
+      if (rtCheck.rows.length > 0) {
+        id_rt = rtCheck.rows[0].id_rt;
+        console.log("✅ Berhasil mendeteksi id_rt otomatis:", id_rt);
+      } else {
+        // Jika user bukan RT dan tidak kirim id_rt, maka error
+        console.error("❌ User bukan Ketua RT dan tidak mengirim id_rt manual.");
+        return res.status(400).json({ 
+            message: "Gagal: id_rt tidak ditemukan. Pastikan Anda login sebagai RT atau kirim id_rt." 
+        });
+      }
+    }
+
+    // 3. Eksekusi Simpan ke Database
     const result = await pool.query(
       `INSERT INTO warga (nama_lengkap, nik, no_kk, id_rt, status_verifikasi)
        VALUES ($1, $2, $3, $4, 'pending')
        RETURNING *`,
       [nama_lengkap, nik, no_kk, id_rt]
     );
+
+    console.log("✅ Sukses simpan ke DB:", result.rows[0]);
+
     res.status(201).json({
       message: "✅ Data warga berhasil ditambahkan",
       data: result.rows[0],
     });
+
   } catch (err) {
-    console.error("❌ Gagal menambahkan warga:", err.message);
+    console.error("❌ Gagal menambahkan warga (SQL Error):", err.message);
+    
+    // Cek error spesifik (misal NIK duplikat)
+    if (err.code === '23505') { // Kode error Postgres untuk Unique Constraint
+        return res.status(400).json({ message: "Gagal: NIK sudah terdaftar sebelumnya." });
+    }
+
     res.status(500).json({ message: "Gagal menambahkan warga", error: err.message });
   }
 };
@@ -524,5 +564,160 @@ export const getRiwayatSaya = async (req, res) => {
   } catch (err) {
     console.error("Riwayat Error:", err.message);
     res.status(500).json({ message: "Gagal mengambil riwayat" });
+  }
+};
+
+// =================================================================
+// ✅ FUNGSI BARU: Get Data Diri (Agar form tidak kosong saat dibuka)
+// =================================================================
+export const getDataDiri = async (req, res) => {
+  try {
+    const userId = req.user.id_pengguna;
+
+    // 1. Coba cari data lengkap di tabel WARGA
+    const qWarga = "SELECT * FROM warga WHERE pengguna_id = $1";
+    const resultWarga = await pool.query(qWarga, [userId]);
+
+    // Jika sudah pernah isi data warga, kirim datanya
+    if (resultWarga.rows.length > 0) {
+      return res.status(200).json(resultWarga.rows[0]);
+    }
+
+    // 2. [AUTO-FILL] Jika tabel warga KOSONG (User baru),
+    // Ambil data dasar dari tabel PENGGUNA untuk mengisi form awal
+    const qUser = "SELECT username, email FROM pengguna WHERE id_pengguna = $1";
+    const resultUser = await pool.query(qUser, [userId]);
+
+    if (resultUser.rows.length > 0) {
+      const basicData = resultUser.rows[0];
+      // Kita kirim format yang mirip dengan tabel warga
+      // Supaya frontend bisa langsung menampilkannya
+      return res.status(200).json({
+        nama_lengkap: basicData.username, // Auto-isi nama dengan username dulu
+        // Kamu bisa tambahkan field lain jika ada di tabel pengguna
+        nik: "",
+        pekerjaan: "",
+        status_verifikasi: "belum_isi" // Penanda buat frontend
+      });
+    }
+
+    // Jika benar-benar tidak ada data
+    return res.status(200).json(null);
+
+  } catch (err) {
+    console.error("Error getDataDiri:", err);
+    res.status(500).json({ message: "Gagal mengambil data diri" });
+  }
+};
+
+// =================================================================
+// ✅ FUNGSI UPDATE: Simpan Data Diri (Warga update sendiri)
+// =================================================================
+export const updateDataDiri = async (req, res) => {
+  try {
+    const userId = req.user.id_pengguna; // ID dari Token
+    
+    const { 
+        nik, nama_lengkap, tempat_lahir, tanggal_lahir, jenis_kelamin, 
+        agama, pekerjaan, status_perkawinan, golongan_darah, kewarganegaraan 
+    } = req.body;
+
+    // 1. Cek apakah data warga sudah ada untuk user ini?
+    // FIX: Pakai 'pengguna_id'
+    const checkQuery = "SELECT * FROM warga WHERE pengguna_id = $1"; 
+    const checkResult = await pool.query(checkQuery, [userId]);
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ message: "Data warga belum terhubung dengan akun ini. Hubungi RT." });
+    }
+
+    // 2. Lakukan Update
+    // FIX: WHERE pengguna_id = $11
+    const updateQuery = `
+      UPDATE warga SET
+        nik = COALESCE($1, nik),
+        nama_lengkap = COALESCE($2, nama_lengkap),
+        tempat_lahir = COALESCE($3, tempat_lahir),
+        tanggal_lahir = COALESCE($4, tanggal_lahir),
+        jenis_kelamin = COALESCE($5, jenis_kelamin),
+        agama = COALESCE($6, agama),
+        pekerjaan = COALESCE($7, pekerjaan),
+        status_perkawinan = COALESCE($8, status_perkawinan),
+        golongan_darah = COALESCE($9, golongan_darah),
+        kewarganegaraan = COALESCE($10, kewarganegaraan)
+      WHERE pengguna_id = $11  
+      RETURNING *;
+    `;
+
+    const values = [
+        nik, nama_lengkap, tempat_lahir, tanggal_lahir, 
+        jenis_kelamin, agama, pekerjaan, status_perkawinan, 
+        golongan_darah, kewarganegaraan, 
+        userId 
+    ];
+
+    const result = await pool.query(updateQuery, values);
+
+    res.status(200).json({ 
+        message: "Data berhasil diperbarui", 
+        data: result.rows[0] 
+    });
+
+  } catch (error) {
+    console.error("Error updateDataDiri:", error);
+    res.status(500).json({ message: "Terjadi kesalahan server" });
+  }
+};
+
+/* ============================================================
+   🔔 LIHAT DAFTAR PENGAJUAN PERUBAHAN (KHUSUS RT) - FIX ALAMAT
+   ============================================================ */
+export const getDaftarPengajuanRT = async (req, res) => {
+  try {
+    const userId = req.user.id_pengguna; 
+
+    // 1. CEK: User ini RT nomor berapa?
+    const cekRT = await pool.query(
+        "SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1", 
+        [userId]
+    );
+
+    if (cekRT.rows.length === 0) {
+        return res.status(403).json({ message: "Akses ditolak. Anda bukan Pengurus RT." });
+    }
+
+    const rtId = cekRT.rows[0].id_rt; 
+
+    // 2. AMBIL DATA PENGAJUAN (Status Pending)
+    // FIX: Tambahkan JOIN ke wilayah_rt agar 'alamat_rt' bisa diambil
+    const query = `
+        SELECT 
+            p.id AS id_pengajuan,
+            p.keterangan,
+            p.status,
+            p.created_at,
+            w.nama_lengkap,
+            w.nik,
+            rt.alamat_rt   -- Ambil alamat dari tabel RT (rt), bukan warga (w)
+        FROM pengajuan_perubahan p
+        JOIN warga w ON p.id_warga = w.id_warga
+        JOIN wilayah_rt rt ON w.id_rt = rt.id_rt  -- <--- JOIN PENTING INI
+        WHERE w.id_rt = $1          
+        AND p.status = 'pending'    
+        ORDER BY p.created_at DESC
+    `;
+
+    const result = await pool.query(query, [rtId]);
+
+    console.log(`[NOTIF RT] Ditemukan ${result.rows.length} pengajuan.`);
+    
+    res.json({
+        success: true,
+        data: result.rows
+    });
+
+  } catch (err) {
+    console.error("Error getDaftarPengajuanRT:", err.message);
+    res.status(500).json({ message: "Server Error saat mengambil notifikasi" });
   }
 };
