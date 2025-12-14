@@ -99,7 +99,7 @@ void _navigateToDetail(Map<String, dynamic> data) {
 @override
   Widget build(BuildContext context) {
     // Definisi warna biar seragam (bisa ditaruh di atas juga)
-    const Color backgroundColor = Color(0xFFFAF6E6); 
+    const Color backgroundColor = Color(0xFFF8F2E5); 
 
     return Material(
       color: backgroundColor, // Background utama krem

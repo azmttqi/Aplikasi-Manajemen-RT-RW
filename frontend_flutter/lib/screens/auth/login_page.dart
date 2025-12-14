@@ -97,7 +97,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Tambahkan background putih bersih
+      backgroundColor: const Color (0xFFF8F2E5), 
       bottomNavigationBar: Container(
         height: 50,
         color: const Color(0xFF678267),

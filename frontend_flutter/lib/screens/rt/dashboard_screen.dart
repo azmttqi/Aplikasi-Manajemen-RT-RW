@@ -119,7 +119,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           'Jumlah KK', 
                           _dashboardData?['total_kk']?.toString() ?? '0',
                           Icons.folder_shared,
-                          Colors.green 
+                          const Color(0xFF678267),
                         ),
 
                         // KARTU PENDING (Tetap saya biarkan sebagai info statistik)

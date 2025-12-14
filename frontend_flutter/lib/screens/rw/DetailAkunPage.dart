@@ -58,9 +58,10 @@ class _DetailAkunPageState extends State<DetailAkunPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F2E5),
       appBar: AppBar(
         title: Text(widget.judulHalaman, style: const TextStyle(color: Colors.white)),
-        backgroundColor: Colors.green,
+        backgroundColor: const Color (0xFF678267),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),

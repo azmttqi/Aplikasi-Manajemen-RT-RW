@@ -15,10 +15,10 @@ class DetailStatistikWarga extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF6E6),
+      backgroundColor: const Color(0xFFF8F2E5),
       appBar: AppBar(
         title: const Text("Statistik Warga", style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.green,
+        backgroundColor: const Color (0xFF678267),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),

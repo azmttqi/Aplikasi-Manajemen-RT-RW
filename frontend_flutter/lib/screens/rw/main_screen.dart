@@ -59,7 +59,7 @@ class RwMainScreenState extends State<RwMainScreen> {
         child: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,      // GANTI JADI PUTIH (Lebih Clean)
-          selectedItemColor: Colors.green[700], // Icon Aktif: HIJAU TUA
+          selectedItemColor: const Color.fromARGB(255, 55, 129, 58), // Icon Aktif: HIJAU TUA
           unselectedItemColor: Colors.grey,     // Icon Mati: ABU-ABU
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,

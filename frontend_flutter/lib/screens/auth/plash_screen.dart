@@ -26,6 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color (0xFFF8F2E5), 
       // Tidak perlu AppBar atau BottomNavigationBar
       body: Center(
         child: Column(
@@ -36,7 +37,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Icon(
               Icons.home_work_rounded, // Placeholder icon
               size: 100, // Ukuran lebih besar untuk splash
-              color: Colors.green[800],
+              color: const Color (0xFF678267),
             ),
           ],
         ),

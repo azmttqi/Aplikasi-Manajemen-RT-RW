@@ -25,8 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Ganti putih agar logo menyatu (opsional)
-      
+      backgroundColor: const Color (0xFFF8F2E5), 
       // Footer Hak Cipta
       bottomNavigationBar: Container(
         height: 50,

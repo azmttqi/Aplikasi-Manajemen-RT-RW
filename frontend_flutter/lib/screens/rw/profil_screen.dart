@@ -168,7 +168,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E1), // BACKGROUND CREAM (Konsisten dengan Warga)
+      backgroundColor: const Color(0xFFF8F2E5), // BACKGROUND CREAM (Konsisten dengan Warga)
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),

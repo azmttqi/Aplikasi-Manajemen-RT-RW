@@ -47,7 +47,7 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E1),
+      backgroundColor: const Color(0xFFF8F2E5),
       appBar: AppBar(
         title: const Text("Permohonan Warga", style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,

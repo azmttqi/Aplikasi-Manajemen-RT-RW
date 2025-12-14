@@ -86,7 +86,7 @@ class _RegisterRtScreenState extends State<RegisterRtScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFBE6), // Background cream sesuai desain
+      backgroundColor: const Color(0xFFF8F2E5), // Background cream sesuai desain
       appBar: AppBar(
         title: const Text("Pendaftaran Admin RT"), 
         backgroundColor: Colors.transparent, 

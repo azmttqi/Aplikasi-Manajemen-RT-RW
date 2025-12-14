@@ -38,7 +38,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color (0xFFF8F2E5),
       appBar: AppBar(
         title: const Text("Data Warga", style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,

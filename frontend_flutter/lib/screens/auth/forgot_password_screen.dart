@@ -8,7 +8,7 @@ class ForgotPasswordScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Background putih bersih
+      backgroundColor: const Color (0xFFF8F2E5), 
       
       // Footer yang sama
       bottomNavigationBar: Container(

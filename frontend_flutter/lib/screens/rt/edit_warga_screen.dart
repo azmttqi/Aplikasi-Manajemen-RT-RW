@@ -78,10 +78,10 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E1), // Background Cream
+      backgroundColor: const Color(0xFFF8F2E5), // Background Cream
       appBar: AppBar(
         title: const Text("Edit Data Warga", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color (0xFFF8F2E5),
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
       ),

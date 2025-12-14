@@ -45,7 +45,7 @@ class _StatistikPerRtScreenState extends State<StatistikPerRtScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title, style: const TextStyle(color: Colors.white)),
-        backgroundColor: Colors.green,
+        backgroundColor: const Color(0xFF678267),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       backgroundColor: const Color(0xFFFAF6E6),
