@@ -18,7 +18,7 @@ class DetailStatistikWarga extends StatelessWidget {
       backgroundColor: const Color(0xFFF8F2E5),
       appBar: AppBar(
         title: const Text("Statistik Warga", style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color (0xFF678267),
+        backgroundColor: Colors.green,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),

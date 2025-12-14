@@ -99,7 +99,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(height: 5),
                         const Text(
                           'Data Statistik Lingkungan',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                          style: TextStyle(fontSize: 16, color: const Color (0xFFD36F00)),
                         ),
                         
                         const SizedBox(height: 20),
@@ -119,7 +119,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           'Jumlah KK', 
                           _dashboardData?['total_kk']?.toString() ?? '0',
                           Icons.folder_shared,
-                          const Color(0xFF678267),
+                          Colors.green 
                         ),
 
                         // KARTU PENDING (Tetap saya biarkan sebagai info statistik)
