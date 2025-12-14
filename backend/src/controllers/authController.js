@@ -88,14 +88,14 @@ const registerUserByRole = (roleName) => async (req, res) => {
     if (roleName === 'RW') {
         await client.query(
             `INSERT INTO wilayah_rw (nama_rw, kode_rw, alamat_rw, id_pengguna) 
-             VALUES ($1, $2, $3, $4, $5)`,
+             VALUES ($1, $2, $3, $4)`,
             [`RW ${nomor_rw}`, kode_wilayah_baru, alamat, userId]
         );
     } else if (roleName === 'RT') {
         await client.query(
             `INSERT INTO wilayah_rt (kode_rt, alamat_rt, id_rw, id_pengguna, nomor_rt) 
-             VALUES ($1, $2, $3, $4)`,
-            [kode_wilayah_baru, alamat, id_wilayah_induk, userId], nomor_rt
+             VALUES ($1, $2, $3, $4, $5)`,
+            [kode_wilayah_baru, alamat, id_wilayah_induk, userId, nomor_rt]
         );
     } else if (roleName === 'Warga') {
         // PERHATIKAN: Disini status_verifikasi diisi 'pending'
@@ -219,10 +219,11 @@ export const getMe = async (req, res) => {
         }
     } 
     else if (roleName === 'Warga') {
-        // --- INI PERBAIKAN PENTING UNTUK WARGA ---
-        // Kita ambil data warga termasuk STATUS_VERIFIKASI dan JOIN ke tabel RT untuk dapat alamat domisili
+        // --- PERBAIKAN: Tambahkan w.* agar semua data warga terambil ---
         const wargaQuery = await pool.query(
-            `SELECT w.nama_lengkap, w.nik, w.status_verifikasi, rt.alamat_rt 
+            `SELECT 
+                w.*,  -- Ambil SEMUA kolom dari tabel warga (agama, pekerjaan, dll)
+                rt.alamat_rt 
              FROM warga w
              LEFT JOIN wilayah_rt rt ON w.id_rt = rt.id_rt
              WHERE w.pengguna_id = $1`, 
@@ -232,15 +233,21 @@ export const getMe = async (req, res) => {
         if (wargaQuery.rows.length > 0) {
             const dataWarga = wargaQuery.rows[0];
             
-            // Override data default dengan data real warga
             responseData.nama_lengkap = dataWarga.nama_lengkap;
             responseData.nik = dataWarga.nik;
-            
-            // Ambil Alamat dari RT (Domisili)
             responseData.alamat = dataWarga.alamat_rt || "Alamat RT tidak ditemukan";
-            
-            // KIRIM STATUS KE FLUTTER ('pending', 'verified', 'rejected')
             responseData.status = dataWarga.status_verifikasi; 
+
+            // --- TAMBAHAN PENTING (Kirim ke Flutter) ---
+            // Masukkan data sensus ke dalam responseData supaya Dashboard bisa nge-cek
+            responseData.jenis_kelamin = dataWarga.jenis_kelamin;
+            responseData.agama = dataWarga.agama;
+            responseData.pekerjaan = dataWarga.pekerjaan;
+            responseData.status_perkawinan = dataWarga.status_perkawinan;
+            responseData.golongan_darah = dataWarga.golongan_darah;
+            responseData.kewarganegaraan = dataWarga.kewarganegaraan;
+            responseData.tempat_lahir = dataWarga.tempat_lahir;
+            responseData.tanggal_lahir = dataWarga.tanggal_lahir;
         }
     }
 
@@ -303,5 +310,114 @@ export const updateProfile = async (req, res) => {
   } catch (err) {
     console.error("Update Profil Error:", err.message);
     res.status(500).json({ message: "Gagal mengupdate profil" });
+  }
+};
+
+// ============================================================
+// 5. UPDATE DATA PRIBADI WARGA (Lengkapi Data Sensus)
+// ============================================================
+export const updateDataWarga = async (req, res) => {
+  // Ambil ID dari token (req.user diset oleh middleware verifyToken)
+  const userId = req.user.id_pengguna; 
+
+  // Ambil data dari body request
+  const { 
+    tempat_lahir, 
+    tanggal_lahir, 
+    jenis_kelamin, 
+    agama, 
+    pekerjaan, 
+    status_perkawinan, 
+    golongan_darah 
+  } = req.body;
+
+  try {
+    // --- PASTIKAN TIDAK ADA KODE IF (req.user.role !== 'RT') DISINI ---
+    
+    // Query update database
+    const query = `
+      UPDATE warga 
+      SET 
+        tempat_lahir = COALESCE($1, tempat_lahir),
+        tanggal_lahir = COALESCE($2, tanggal_lahir),
+        jenis_kelamin = COALESCE($3, jenis_kelamin),
+        agama = COALESCE($4, agama),
+        pekerjaan = COALESCE($5, pekerjaan),
+        status_perkawinan = COALESCE($6, status_perkawinan),
+        golongan_darah = COALESCE($7, golongan_darah)
+      WHERE pengguna_id = $8
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [
+      tempat_lahir, 
+      tanggal_lahir, 
+      jenis_kelamin, 
+      agama, 
+      pekerjaan, 
+      status_perkawinan, 
+      golongan_darah, 
+      userId
+    ]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Data warga tidak ditemukan." });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Data berhasil disimpan!",
+      data: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("Error updateDataWarga:", err.message);
+    res.status(500).json({ message: "Gagal menyimpan data." });
+  }
+};
+
+// ============================================================
+// 6. GET DETAIL WARGA (KHUSUS UNTUK RT MELIHAT WARGA)
+// ============================================================
+export const getWargaDetailById = async (req, res) => {
+  // ID Warga yang mau dilihat (dikirim via URL)
+  const { id_warga } = req.params; 
+  const userRequesting = req.user; 
+
+  try {
+    // 1. Cek apakah yang minta data adalah RT (ID Role 2)
+    if (userRequesting.id_role !== 2) {
+        return res.status(403).json({ message: "Hanya Pak RT yang boleh lihat detail ini." });
+    }
+
+    // 2. Ambil Data Lengkap (Join Table)
+    const query = `
+      SELECT 
+        w.*,               
+        p.email,           
+        p.username,
+        rt.nomor_rt,       
+        rw.nama_rw         
+      FROM warga w
+      JOIN pengguna p ON w.pengguna_id = p.id_pengguna
+      JOIN wilayah_rt rt ON w.id_rt = rt.id_rt
+      JOIN wilayah_rw rw ON rt.id_rw = rw.id_rw
+      WHERE w.id_warga = $1
+    `;
+
+    const result = await pool.query(query, [id_warga]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Warga tidak ditemukan." });
+    }
+
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("Error getWargaDetail:", err.message);
+    res.status(500).json({ message: "Server Error" });
   }
 };

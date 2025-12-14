@@ -146,6 +146,33 @@ class ApiService {
     }
   }
 
+  // [BARU] Fungsi untuk Melengkapi Data Warga
+  static Future<Map<String, dynamic>> updateDataWarga(Map<String, dynamic> data) async {
+    final token = await getToken(); // Pastikan kamu punya fungsi getToken
+    if (token == null) return {'success': false, 'message': 'Token tidak ditemukan'};
+
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/warga/update-data'), // Sesuaikan endpoint di routes backend
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(data),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': responseData['message']};
+      } else {
+        return {'success': false, 'message': responseData['message'] ?? 'Gagal menyimpan data'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Terjadi kesalahan koneksi: $e'};
+    }
+  }
+
   static Future<Map<String, dynamic>> updateProfile({
     required String currentPassword,
     String? newEmail,
@@ -234,41 +261,68 @@ class ApiService {
   }
 
   // ===============================================================
-  // 🟢 BAGIAN TAMBAHAN: KHUSUS NOTIFIKASI RT (REAL DATA)
+  // 🟢 FIX: AMBIL 2 DATA SEKALIGUS (WARGA BARU + PENGAJUAN)
   // ===============================================================
-
-  // 1. Ambil Data Warga Pending (Notifikasi RT)
-  // Sesuai Backend: router.get("/pending", ...) -> /api/warga/pending
   static Future<Map<String, dynamic>?> getRtNotifications() async {
     try {
-      // Pastikan URL mengarah ke /api/warga/pending
-      // Ganti localhost dengan 10.0.2.2 jika pakai Emulator
-      final url = Uri.parse("$baseUrl/warga/pending");
-      
-      final response = await http.get(
-        url, 
-        headers: {
-          'Authorization': 'Bearer $_token',
-          'Content-Type': 'application/json',
-        },
-      );
+      // 1. Siapkan 2 URL Endpoint
+      final urlWargaBaru = Uri.parse("$baseUrl/warga/pending");
+      final urlPengajuan = Uri.parse("$baseUrl/warga/pengajuan/rt"); // Endpoint baru!
 
-      print("🔔 Cek Notif RT: $url | Status: ${response.statusCode}");
+      print("🔄 Fetching RT Notifications...");
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        
-        // Backend kamu mengembalikan list di dalam "data". 
-        // Kita masukkan ke "pendaftaran_baru" agar UI NotificationScreen bisa bacanya.
-        return {
-          "pendaftaran_baru": data['data'] ?? [], 
-          "pengajuan_update": [] // Kosongkan dulu (belum ada route update di backend)
-        };
+      // 2. Panggil API secara bersamaan (Paralel)
+      final responses = await Future.wait([
+        http.get(
+          urlWargaBaru,
+          headers: {
+            'Authorization': 'Bearer $_token',
+            'Content-Type': 'application/json',
+          },
+        ),
+        http.get(
+          urlPengajuan,
+          headers: {
+            'Authorization': 'Bearer $_token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      ]);
+
+      final resBaru = responses[0];   // Hasil Warga Baru
+      final resUpdate = responses[1]; // Hasil Pengajuan Update
+
+      print("📩 Status Warga Baru: ${resBaru.statusCode}");
+      print("📩 Status Pengajuan: ${resUpdate.statusCode}");
+
+      // 3. Olah Datanya
+      List<dynamic> listWargaBaru = [];
+      List<dynamic> listPengajuan = [];
+
+      // Cek Warga Baru
+      if (resBaru.statusCode == 200) {
+        final json = jsonDecode(resBaru.body);
+        listWargaBaru = json['data'] ?? [];
       }
+
+      // Cek Pengajuan Update
+      if (resUpdate.statusCode == 200) {
+        final json = jsonDecode(resUpdate.body);
+        listPengajuan = json['data'] ?? [];
+      } else {
+        print("⚠️ Gagal ambil pengajuan: ${resUpdate.body}");
+      }
+
+      // 4. Kembalikan gabungan data
+      return {
+        "pendaftaran_baru": listWargaBaru,
+        "pengajuan_update": listPengajuan, // <-- SEKARANG SUDAH TERISI!
+      };
+
     } catch (e) {
       print("❌ Error getRtNotifications: $e");
+      return null;
     }
-    return null;
   }
 
   // 2. Verifikasi Warga (Tombol Setujui/Tolak)

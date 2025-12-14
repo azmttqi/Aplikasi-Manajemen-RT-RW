@@ -14,3 +14,13 @@ export const verifyToken = (req, res, next) => {
     next();
   });
 };
+
+export const cekRole = (roles) => {
+    return (req, res, next) => {
+        // Pastikan req.user ada (dari verifyToken) dan role-nya sesuai
+        if (!req.user || !roles.includes(req.user.role)) {
+            return res.status(403).json({ message: "Akses ditolak: Role tidak diizinkan" });
+        }
+        next();
+    };
+};

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // <--- 1. WAJIB IMPORT INI
 import '../../services/api_service.dart';
 import '../rw/main_screen.dart';
 import '../rt/rt_main_screen.dart';
 import '../warga/warga_main_screen.dart';
-
-// Import Widget Logo (Pastikan file ini sudah dibuat di lib/widgets/logo_widget.dart)
 import '../../widgets/logo_widget.dart'; 
-
 import './register_screen.dart';
 import './forgot_password_screen.dart';
 
@@ -46,43 +44,68 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    final result = await ApiService.login(identifier, password);
+    try {
+      final result = await ApiService.login(identifier, password);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (result['success'] == true) {
-      final role = result['role'] as String;
+      if (result['success'] == true) {
+        
+        // --- 2. MULAI PERBAIKAN: SIMPAN TOKEN ---
+        final prefs = await SharedPreferences.getInstance();
+        
+        // Pastikan backend mengirim key bernama 'token'. 
+        // Jika backend mengirim 'access_token', ganti string di bawah.
+        String tokenDariBackend = result['token'] ?? ''; 
+        
+        if (tokenDariBackend.isNotEmpty) {
+           // Simpan token dengan nama kunci 'token' (Harus sama dengan di file Lengkapi Profil)
+           await prefs.setString('token', tokenDariBackend);
+           print("Token Berhasil Disimpan: $tokenDariBackend"); // Cek di Console
+        } else {
+           print("WARNING: Login sukses tapi Token dari backend kosong!");
+        }
+        // ----------------------------------------
 
-      if (role == "RW") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => RwMainScreen()),
-        );
-      } else if (role == 'RT') {
-        Navigator.pushReplacement(
-          context, 
-          MaterialPageRoute(builder: (context) => const RtMainScreen()),
-        );
-      } else if (role == "Warga") {
-        Navigator.pushReplacement(
-          context, 
-          MaterialPageRoute(builder: (context) => const WargaMainScreen()),
-        );
+        final role = result['role'] as String;
+
+        if (role == "RW") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => RwMainScreen()),
+          );
+        } else if (role == 'RT') {
+          Navigator.pushReplacement(
+            context, 
+            MaterialPageRoute(builder: (context) => const RtMainScreen()),
+          );
+        } else if (role == "Warga") {
+          Navigator.pushReplacement(
+            context, 
+            MaterialPageRoute(builder: (context) => const WargaMainScreen()),
+          );
+        } else {
+          setState(() {
+            _showError = true;
+            _errorText = "Peran tidak dikenali.";
+          });
+        }
+
+        setState(() {
+          _isLoading = false;
+        });
       } else {
         setState(() {
+          _isLoading = false;
           _showError = true;
-          _errorText = "Peran tidak dikenali.";
+          _errorText = (result['message'] ?? "Login gagal.").toString();
         });
       }
-
-      setState(() {
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
+    } catch (e) {
+       setState(() {
         _isLoading = false;
         _showError = true;
-        _errorText = (result['message'] ?? "Login gagal.").toString();
+        _errorText = "Terjadi kesalahan koneksi: $e";
       });
     }
   }
@@ -111,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-      body: Center( // Tambahkan Center agar konten di tengah vertikal
+      body: Center( 
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
@@ -119,21 +142,14 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                
-                // --- BAGIAN LOGO (DIPERBAIKI) ---
-                // Kita gunakan LogoWidget agar seragam.
-                // Jika belum buat widgetnya, ganti baris ini dengan Image.asset(...)
                 const Center(
                   child: LogoWidget(
-                    height: 220, // Ukuran logo di halaman login
+                    height: 220, 
                     width: 220,
                   ),
                 ),
-                // -------------------------------
-
                 const SizedBox(height: 0),
 
-                // --- Username ---
                 TextFormField(
                   controller: _usernameController,
                   decoration: const InputDecoration(
@@ -149,7 +165,6 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 16),
 
-                // --- Password ---
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _isPasswordHidden,
@@ -181,10 +196,9 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 24),
 
-                // --- Tombol Login ---
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF678267), // Sesuaikan warna dengan tema (Hijau)
+                    backgroundColor: const Color(0xFF678267), 
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
