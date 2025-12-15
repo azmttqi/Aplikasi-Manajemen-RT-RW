@@ -73,8 +73,12 @@ const registerUserByRole = (roleName) => async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    let statusId = 1; // Default ID status
-    const statusRes = await client.query("SELECT id FROM status_verifikasi WHERE nama = 'Diajukan' LIMIT 1");
+    
+    // --- STATUS VERIFIKASI ---
+    // Pastikan ID status ini sesuai dengan tabel 'status_verifikasi' di database Anda
+    // Biasanya: 1 = Pending, 2 = Disetujui
+    let statusId = 1; // Default Pending/Diajukan
+    const statusRes = await client.query("SELECT id FROM status_verifikasi WHERE nama = 'Diajukan' OR nama = 'Pending' LIMIT 1");
     if (statusRes.rows.length > 0) statusId = statusRes.rows[0].id;
 
     const insertUser = await client.query(
@@ -109,7 +113,7 @@ const registerUserByRole = (roleName) => async (req, res) => {
     await client.query('COMMIT');
 
     res.status(201).json({
-      message: `Registrasi ${roleName} berhasil`,
+      message: `Registrasi ${roleName} berhasil. Menunggu verifikasi.`,
       user: { email, username, role: roleName }
     });
 
@@ -123,7 +127,7 @@ const registerUserByRole = (roleName) => async (req, res) => {
 };
 
 // ==========================================
-// 2. FUNGSI LOGIN
+// 2. FUNGSI LOGIN (MODIFIKASI CEK STATUS)
 // ==========================================
 const login = async (req, res) => {
   try {
@@ -132,6 +136,8 @@ const login = async (req, res) => {
 
     if (!loginKey || !password) return res.status(400).json({ message: "Input tidak lengkap!" });
 
+    // Ambil data user beserta role-nya (join jika perlu, atau ambil id_role saja)
+    // Disini kita asumsikan status_verifikasi_id ada di tabel pengguna
     const userRes = await pool.query("SELECT * FROM pengguna WHERE email = $1 OR username = $1", [loginKey]);
     const user = userRes.rows[0];
 
@@ -139,6 +145,33 @@ const login = async (req, res) => {
 
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ message: "Password salah" });
+
+    // ============================================================
+    // 🛑 CEK STATUS VERIFIKASI SEBELUM BERI TOKEN
+    // ============================================================
+    // Asumsi: 
+    // id_role 2 = RT (Sesuaikan dengan DB Anda)
+    // status_verifikasi_id 1 = Pending/Diajukan
+    // status_verifikasi_id 2 = Disetujui/Aktif
+    // status_verifikasi_id 3 = Ditolak
+
+    if (user.id_role === 2) { // Jika user adalah RT
+        if (user.status_verifikasi_id === 1) {
+            return res.status(403).json({ 
+                message: "Akun RT Anda sedang menunggu verifikasi dari Ketua RW. Silakan hubungi RW setempat." 
+            });
+        }
+        if (user.status_verifikasi_id === 3) {
+            return res.status(403).json({ 
+                message: "Pendaftaran akun RT Anda ditolak oleh RW." 
+            });
+        }
+    }
+    // Tambahkan logika serupa untuk role lain jika diperlukan (misal RW juga perlu verifikasi admin)
+
+    // ============================================================
+    // ✅ JIKA STATUS OK, LANJUT BUAT TOKEN
+    // ============================================================
 
     const token = jwt.sign(
       { id_pengguna: user.id_pengguna, id_role: user.id_role },
@@ -163,6 +196,8 @@ export const registerRT = registerUserByRole("RT");
 export const registerWarga = registerUserByRole("Warga");
 export { login };
 
+// ... (Fungsi getMe, updateProfile, updateDataWarga, getWargaDetailById TETAP SAMA seperti file asli Anda)
+// (Copy paste sisa fungsi di bawah ini dari kode asli Anda karena tidak ada perubahan logika di sana)
 
 // ============================================================
 // 3. GET ME (PROFIL) - SUDAH DIPERBAIKI (ADD STATUS)

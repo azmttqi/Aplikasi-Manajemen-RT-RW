@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../services/api_service.dart'; // Sesuaikan path jika perlu
-import 'DetailAkunPage.dart'; // Sesuaikan path jika perlu
-import 'account_search_screen.dart';
-import '../../utils/global_keys.dart';
-import 'StatistikPerRtScreen.dart';
-import 'main_screen.dart';
-import '../../widgets/logo_widget.dart'; // Import Logo Widget
-
+import '../../services/api_service.dart';
+import 'StatistikPerRtScreen.dart'; // Pastikan file ini ada
+import '../../widgets/logo_widget.dart'; // Pastikan file ini ada
+import '../../utils/global_keys.dart'; // Untuk navigasi tab
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -26,7 +22,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     _fetchDashboardData();
   }
 
-  // Fungsi mengambil data dari Backend
+  // Fungsi ambil data dari API
   Future<void> _fetchDashboardData() async {
     setState(() {
       _isLoading = true;
@@ -34,10 +30,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     });
 
     try {
-      // Panggil API (Pastikan fungsi ini ada di ApiService)
       final result = await ApiService.getDashboardStats();
-
-      if (mounted) { // Cek apakah layar masih aktif
+      if (mounted) {
         setState(() {
           _isLoading = false;
           if (result['success'] == true) {
@@ -51,15 +45,14 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = "Terjadi kesalahan koneksi: $e";
+          _errorMessage = "Gagal terhubung ke server.";
         });
       }
     }
   }
 
-void _navigateToDetail(String title, String value) {
-    
-    // SKENARIO 1: Klik "Jumlah Warga" -> Lihat Sebaran Warga per RT
+  // Fungsi Navigasi saat kartu diklik
+  void _onCardTap(String title) {
     if (title == 'Jumlah Warga') {
       Navigator.push(
         context,
@@ -70,10 +63,7 @@ void _navigateToDetail(String title, String value) {
           ),
         ),
       );
-    } 
-    
-    // SKENARIO 2: Klik "Jumlah Kartu Keluarga" -> Lihat Sebaran KK per RT
-    else if (title == 'Jumlah Kartu Keluarga') {
+    } else if (title == 'Jumlah Kartu Keluarga') {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -83,32 +73,33 @@ void _navigateToDetail(String title, String value) {
           ),
         ),
       );
-    }
-
-    // SKENARIO 3: Klik "Jumlah RT" -> Ke List RT (Pakai GlobalKey Tab)
-    else if (title == 'Jumlah RT') {
+    } else if (title == 'Jumlah RT') {
+      // Pindah ke Tab "Data RT" (Index 1) menggunakan GlobalKey
       final state = mainScreenKey.currentState;
-      if (state is RwMainScreenState) {
-        state.changeTab(1); 
+      if (state != null) {
+        // PERBAIKAN: Gunakan (state as dynamic) agar tidak merah
+        (state as dynamic).changeTab(1);
       }
     }
   }
+
   @override
   Widget build(BuildContext context) {
-    const Color softBackgroundColor = Color(0xFFFAF6E6);
+    // Warna Background Cream (Sama persis dengan RT)
+    const Color backgroundColor = Color(0xFFFAF6E6); 
 
-    return Material(
-      color: softBackgroundColor,
-      child: _isLoading
-          ? const Center(child: CircularProgressIndicator()) // Tampilkan Loading
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center( // Tampilkan Error & Tombol Retry
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.error_outline, size: 48, color: Colors.red),
                       const SizedBox(height: 10),
-                      Text(_errorMessage!, textAlign: TextAlign.center),
+                      Text(_errorMessage!),
                       const SizedBox(height: 10),
                       ElevatedButton(
                         onPressed: _fetchDashboardData,
@@ -117,47 +108,72 @@ void _navigateToDetail(String title, String value) {
                     ],
                   ),
                 )
-              : RefreshIndicator( // Fitur Tarik ke Bawah untuk Refresh
+              : RefreshIndicator(
                   onRefresh: _fetchDashboardData,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 100.0, top: 20.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // --- Header ---
+                          // --- HEADER LOGO ---
+                          const SizedBox(height: 20),
                           const Center(
-                          child: LogoWidget(
-                            height: 180, 
-                            width: 180,
+                            child: LogoWidget(height: 120, width: 120),
                           ),
-                        ),
-                          const SizedBox(height: 0),
-
-                          const Text('Dashboard Super Admin', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
-                          const SizedBox(height: 4),
-                          const Text('Data Realtime Wilayah', style: TextStyle(fontSize: 16, color: Color(0xFFD36F00), fontWeight: FontWeight.w600)),
                           const SizedBox(height: 20),
 
-                          // --- KARTU DATA (REAL COUNT) ---
-                          // Kita ambil data dari _dashboardData, jika null pakai '0'
-                          _buildDataCard(
+                          // --- TEKS SAMBUTAN ---
+                          const Text(
+                            'Dashboard RW',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          const Text(
+                            'Data Statistik Lingkungan RW',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFFD36F00), // Warna oranye khas
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 25),
+
+                          // --- KARTU 1: JUMLAH WARGA (BIRU) ---
+                          _buildStatCard(
                             title: 'Jumlah Warga',
-                            value: _dashboardData?['total_warga']?.toString() ?? '0',
+                            count: _dashboardData?['total_warga']?.toString() ?? '0',
+                            icon: Icons.people,
+                            color: Colors.blue,
                           ),
+
                           const SizedBox(height: 15),
-                          
-                          _buildDataCard(
+
+                          // --- KARTU 2: JUMLAH KK (HIJAU) ---
+                          _buildStatCard(
                             title: 'Jumlah Kartu Keluarga',
-                            value: _dashboardData?['total_kk']?.toString() ?? '0',
+                            count: _dashboardData?['total_kk']?.toString() ?? '0',
+                            icon: Icons.folder_shared, 
+                            color: Colors.green,
                           ),
+
                           const SizedBox(height: 15),
-                          
-                          _buildDataCard(
+
+                          // --- KARTU 3: JUMLAH RT (ORANYE) ---
+                          // Ini spesial untuk RW
+                          _buildStatCard(
                             title: 'Jumlah RT',
-                            value: _dashboardData?['total_rt']?.toString() ?? '0',
+                            count: _dashboardData?['total_rt']?.toString() ?? '0',
+                            icon: Icons.home_work, 
+                            color: Colors.orange,
                           ),
+                          
+                          const SizedBox(height: 100), // Space bawah agar scroll enak
                         ],
                       ),
                     ),
@@ -166,24 +182,61 @@ void _navigateToDetail(String title, String value) {
     );
   }
 
-  Widget _buildDataCard({required String title, required String value}) {
-    return InkWell(
-      onTap: () => _navigateToDetail(title, value),
-      child: Card(
-        elevation: 2.0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-          width: double.infinity,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+  // --- WIDGET KARTU (Sama persis dengan Dashboard RT) ---
+  // Fungsi ini harus ada di dalam Class _SuperAdminDashboardState
+  Widget _buildStatCard({
+    required String title,
+    required String count,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Card(
+      elevation: 4, 
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: InkWell(
+        onTap: () => _onCardTap(title),
+        borderRadius: BorderRadius.circular(15),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0), 
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black54)),
-              const SizedBox(height: 10),
-              // Angka Besar
-              Text(
-                value, 
-                style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.black),
+              // Bagian KIRI: Teks & Angka
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    count,
+                    style: const TextStyle(
+                      fontSize: 32, // Angka Besar
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+
+              // Bagian KANAN: Icon dalam Kotak Warna Transparan
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1), 
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: color, 
+                  size: 32,
+                ),
               ),
             ],
           ),

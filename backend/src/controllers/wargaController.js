@@ -333,6 +333,9 @@ export const getDashboardRW = async (req, res) => {
 /* ============================================================
    🔍 GET DATA LIST (FIX: Ambil w.* agar data detail ikut terkirim)
 ============================================================ */
+/* ============================================================
+   🔍 GET DATA LIST (FIX: RW AMBIL LIST RT, RT AMBIL LIST WARGA)
+============================================================ */
 export const getDataList = async (req, res) => {
   try {
     const userId = req.user.id_pengguna; 
@@ -341,27 +344,51 @@ export const getDataList = async (req, res) => {
     let query = ""; 
     let params = [];
 
-    // 1. Cek Apakah RW?
+    // 1. Cek Apakah user ini RW?
     const rwCheck = await pool.query("SELECT id_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
     
     if (rwCheck.rows.length > 0) {
-      // ... (Bagian RW biarkan saja / sesuaikan jika perlu) ...
+      // === LOGIKA RW: AMBIL DAFTAR AKUN RT ===
+      const idRw = rwCheck.rows[0].id_rw;
+      params.push(idRw); // $1
+
+      // Kita ambil data RT dan User-nya (Join tabel wilayah_rt dengan pengguna)
+      query = `
+        SELECT 
+          rt.id_rt,
+          rt.nomor_rt,
+          rt.kode_rt,
+          u.id_pengguna,
+          u.username as nama_ketua_rt,
+          u.email,
+          u.status_verifikasi_id
+        FROM wilayah_rt rt
+        LEFT JOIN pengguna u ON rt.id_pengguna = u.id_pengguna
+        WHERE rt.id_rw = $1
+      `;
+
+      // Filter Pencarian (Cari Nomor RT atau Nama Ketua)
+      if (search) {
+        query += ` AND (rt.nomor_rt ILIKE $2 OR u.username ILIKE $2)`;
+        params.push(`%${search}%`);
+      }
+
+      query += " ORDER BY rt.nomor_rt ASC";
     } 
     
-    // 2. Cek Apakah RT? (FOKUS DI SINI)
+    // 2. Cek Apakah user ini RT?
     else {
       const rtCheck = await pool.query("SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
       
       if (rtCheck.rows.length > 0) {
+        // === LOGIKA RT: AMBIL DAFTAR WARGA ===
         const idRt = rtCheck.rows[0].id_rt;
-        params.push(idRt); 
+        params.push(idRt); // $1
         
-        // --- PERBAIKAN DISINI ---
-        // Ganti query SELECT-nya agar mengambil SEMUA kolom warga (w.*)
         query = `
           SELECT 
-            w.*,  -- <--- PENTING! Ambil semua kolom (agama, pekerjaan, dll)
-            w.id_warga AS id -- Alias id biar frontend gak bingung
+            w.*, 
+            w.id_warga AS id
           FROM warga w
           WHERE w.id_rt = $1 
           AND w.status_verifikasi ILIKE 'disetujui'
@@ -384,54 +411,13 @@ export const getDataList = async (req, res) => {
 
     res.json({
       success: true,
-      role: rwCheck.rows.length > 0 ? 'RW' : 'RT',
+      role: rwCheck.rows.length > 0 ? 'RW' : 'RT', // Beritahu frontend siapa yang login
       data: result.rows
     });
 
   } catch (err) {
     console.error("Search Error:", err.message);
     res.status(500).json({ message: "Server Error saat mencari data" });
-  }
-};
-
-/* ============================================================
-   🔔 NOTIFIKASI UNTUK RW (Daftar RT Baru)
-============================================================ */
-export const getNotificationsRW = async (req, res) => {
-  try {
-    const userId = req.user.id_pengguna;
-
-    // 1. Cari ID RW dari user yang login
-    const rwCheck = await pool.query("SELECT id_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
-    
-    if (rwCheck.rows.length === 0) {
-      return res.status(404).json({ message: "Data RW tidak ditemukan" });
-    }
-    const idRw = rwCheck.rows[0].id_rw;
-
-    // 2. Ambil data RT yang terhubung ke RW ini
-    // Diurutkan berdasarkan waktu pembuatan akun (id_pengguna DESC / created_at)
-    const query = `
-      SELECT 
-        u.username AS nama_ketua,
-        rt.kode_rt,
-        u.created_at
-      FROM wilayah_rt rt
-      JOIN pengguna u ON rt.id_pengguna = u.id_pengguna
-      WHERE rt.id_rw = $1
-      ORDER BY u.created_at DESC
-    `;
-    
-    const result = await pool.query(query, [idRw]);
-
-    res.json({
-      success: true,
-      data: result.rows
-    });
-
-  } catch (err) {
-    console.error("Notif Error:", err.message);
-    res.status(500).json({ message: "Gagal mengambil notifikasi" });
   }
 };
 /* ============================================================
@@ -794,5 +780,46 @@ export const getRejectedWargaForRT = async (req, res) => {
   } catch (err) {
     console.error("Error getRejected:", err.message); // Cek terminal backend kalau error lagi
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* ============================================================
+   🔔 NOTIFIKASI UNTUK RW (Daftar RT Baru)
+============================================================ */
+export const getNotificationsRW = async (req, res) => {
+  try {
+    const userId = req.user.id_pengguna;
+
+    // 1. Cari ID RW dari user yang login
+    const rwCheck = await pool.query("SELECT id_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
+    
+    if (rwCheck.rows.length === 0) {
+      return res.status(404).json({ message: "Data RW tidak ditemukan" });
+    }
+    const idRw = rwCheck.rows[0].id_rw;
+
+    // 2. Ambil data RT yang terhubung ke RW ini
+    // Diurutkan berdasarkan waktu pembuatan akun (id_pengguna DESC / created_at)
+    const query = `
+      SELECT 
+        u.username AS nama_ketua,
+        rt.kode_rt,
+        u.created_at
+      FROM wilayah_rt rt
+      JOIN pengguna u ON rt.id_pengguna = u.id_pengguna
+      WHERE rt.id_rw = $1
+      ORDER BY u.created_at DESC
+    `;
+    
+    const result = await pool.query(query, [idRw]);
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+
+  } catch (err) {
+    console.error("Notif Error:", err.message);
+    res.status(500).json({ message: "Gagal mengambil notifikasi" });
   }
 };

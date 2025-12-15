@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // ⚠️ PENTING:
@@ -459,6 +460,33 @@ static Future<Map<String, dynamic>?> getRtNotifications() async {
       return [];
     } catch (e) {
       return [];
+    }
+  }
+
+// ===========================================================================
+  // 6. get statistik per RT  
+  // ===========================================================================
+
+static Future<List<dynamic>> getStatistikPerRt() async {
+    // SEKARANG ERROR INI AKAN HILANG
+    final prefs = await SharedPreferences.getInstance(); 
+    final token = prefs.getString('token');
+
+    final url = Uri.parse('$baseUrl/dashboard/stats/per-rt');
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final result = jsonDecode(response.body);
+    if (response.statusCode == 200 && result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message'] ?? 'Gagal mengambil data per RT');
     }
   }
 }

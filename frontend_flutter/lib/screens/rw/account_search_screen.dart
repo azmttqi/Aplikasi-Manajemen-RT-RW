@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async'; // Untuk Timer (Debounce search)
 import '../../services/api_service.dart'; // Import Service API
-import 'DetailAkunPage.dart'; 
+import 'DetailAkunPage.dart';
 import '../../widgets/logo_widget.dart'; // Import Logo Widget
 
 class AccountSearchScreen extends StatefulWidget {
@@ -42,13 +42,19 @@ class _AccountSearchScreenState extends State<AccountSearchScreen> {
     });
 
     try {
-      // Panggil API (Backend otomatis tahu ini RW, jadi yang dikirim daftar RT)
+      // DEBUG: Cek di console apakah fungsi ini jalan
+      print("Memulai ambil data dengan query: '$query'");
+
+      // Panggil API (Pastikan endpoint ini mengembalikan List RT)
       final result = await ApiService.getWargaList(query: query);
+
+      // DEBUG: Cek hasil mentah dari API di console
+      print("Hasil API: $result");
 
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _dataList = result; 
+          _dataList = result;
         });
       }
     } catch (e) {
@@ -57,6 +63,8 @@ class _AccountSearchScreenState extends State<AccountSearchScreen> {
           _isLoading = false;
           _errorMessage = "Gagal mengambil data: $e";
         });
+        // DEBUG: Lihat errornya apa
+        print("Error fetch data: $e");
       }
     }
   }
@@ -70,57 +78,60 @@ class _AccountSearchScreenState extends State<AccountSearchScreen> {
   }
 
   // Navigasi ke Detail
-  // Di dalam class _AccountSearchScreenState ...
-
-void _navigateToDetail(Map<String, dynamic> data) {
+  void _navigateToDetail(Map<String, dynamic> data) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => DetailAkunPage(
           idUser: data['id_pengguna'] ?? 0,
-          // Pastikan kirim status verifikasi yang benar
+          // Cek status verifikasi (Asumsi ID 2 = Disetujui)
           isVerified: (data['status_verifikasi_id'] == 2),
-          
+
           nik: data['email'] ?? '-',
-          nama: data['nama_ketua_rt'] ?? data['username'] ?? 'Belum ada Ketua',
-          rt: data['nomor_rt'] ?? '-',
+          nama: data['nama_ketua_rt'] ??
+              data['username'] ??
+              'Belum ada Ketua',
+          rt: (data['nomor_rt'] ?? '-').toString(),
           judulHalaman: "Detail Akun RT",
           labelInfo: "Email Ketua RT",
         ),
       ),
     ).then((_) {
-      // --- BARIS AJAIB INI ---
-      // Saat kembali dari halaman detail, panggil data ulang dari backend
+      // Saat kembali dari halaman detail, refresh data biar update statusnya
       print("Kembali dari detail, refresh data...");
-      _fetchData(); 
+      _fetchData();
     });
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
-    // Definisi warna biar seragam (bisa ditaruh di atas juga)
-    const Color backgroundColor = Color(0xFFF8F2E5); 
+    const Color backgroundColor = Color(0xFFF8F2E5);
 
     return Material(
-      color: backgroundColor, // Background utama krem
+      color: backgroundColor,
       child: Column(
         children: [
-          // --- HEADER (PERBAIKAN WARNA) ---
-          const Center(
-            child: LogoWidget(
-              height: 180, 
-                 width: 180,
-                    ),
-                      ),
-          
+          // --- HEADER LOGO ---
+          const Padding(
+            padding: EdgeInsets.only(top: 40.0, bottom: 20.0),
+            child: Center(
+              child: LogoWidget(
+                height: 120, // Ukuran disesuaikan
+                width: 120,
+              ),
+            ),
+          ),
+
           // --- JUDUL & SEARCH BAR ---
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(16.0, 20.0, 16.0, 10.0),
-                  child: Text('Data Ketua RT', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  padding: EdgeInsets.fromLTRB(16.0, 0, 16.0, 10.0),
+                  child: Text('Data Ketua RT',
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 ),
 
                 // Kolom Pencarian
@@ -138,7 +149,8 @@ void _navigateToDetail(Map<String, dynamic> data) {
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10.0, horizontal: 10.0),
                     ),
                   ),
                 ),
@@ -150,19 +162,24 @@ void _navigateToDetail(Map<String, dynamic> data) {
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : _errorMessage.isNotEmpty
-                          ? Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)))
+                          ? Center(
+                              child: Text(_errorMessage,
+                                  style: const TextStyle(color: Colors.red)))
                           : _dataList.isEmpty
                               ? const Center(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.folder_off, size: 50, color: Colors.grey),
+                                      Icon(Icons.folder_off,
+                                          size: 50, color: Colors.grey),
+                                      SizedBox(height: 10),
                                       Text("Belum ada data RT"),
                                     ],
                                   ),
                                 )
                               : ListView.builder(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0),
                                   itemCount: _dataList.length,
                                   itemBuilder: (context, index) {
                                     final item = _dataList[index];
@@ -180,23 +197,18 @@ void _navigateToDetail(Map<String, dynamic> data) {
 
   // Widget Kartu RT
   Widget _buildRtCard(Map<String, dynamic> data, int index) {
-
-    // --- TAMBAHKAN DEBUGGING INI ---
-    print("DEBUG DATA RT $index: ID User=${data['id_pengguna']}, Status=${data['status_verifikasi_id']}");
     
-    // 1. Ambil Data
-    final String nomorRt = data['nomor_rt'] ?? data['kode_rt'] ?? '-';
+    // 1. Ambil Data & AMANKAN TIPE DATA (PENTING!)
+    // Pakai .toString() untuk jaga-jaga kalau backend kirim Angka
+    final String nomorRt = (data['nomor_rt'] ?? data['kode_rt'] ?? '-').toString();
     final String namaKetua = data['nama_ketua_rt'] ?? data['username'] ?? 'Belum ada Ketua';
-    
-    // 2. CEK STATUS YANG BENAR (Berdasarkan ID Verifikasi dari Database)
-    // Asumsi di database: 1 = Pending, 2 = Disetujui/Aktif, 3 = Ditolak
-    // (Sesuaikan dengan isi tabel status_verifikasi Anda)
-    final int statusId = data['status_verifikasi_id'] ?? 1; // Default 1 (Pending)
-    
-    final bool isVerified = (statusId == 2); // Hanya aktif jika ID-nya 2
-    final bool hasUser = (namaKetua != 'Belum ada Ketua'); // Cek apakah ada user yg daftar
 
-    // Tentukan Teks & Warna Status
+    // 2. LOGIKA STATUS
+    final int statusId = data['status_verifikasi_id'] ?? 1; // Default 1 (Pending)
+    final bool isVerified = (statusId == 2); 
+    final bool hasUser = (namaKetua != 'Belum ada Ketua');
+
+    // Tentukan Warna Status
     String statusText = "Kosong";
     Color statusColor = Colors.grey;
     Color statusBgColor = Colors.grey[200]!;
@@ -207,7 +219,7 @@ void _navigateToDetail(Map<String, dynamic> data) {
         statusColor = Colors.green[800]!;
         statusBgColor = Colors.green[100]!;
       } else {
-        statusText = "Pending"; // Ini yang akan muncul jika belum diverifikasi
+        statusText = "Pending";
         statusColor = Colors.orange[800]!;
         statusBgColor = Colors.orange[100]!;
       }
@@ -223,11 +235,11 @@ void _navigateToDetail(Map<String, dynamic> data) {
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // Icon Rumah
+              // Icon Rumah (Warna berubah sesuai status)
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isVerified ? Colors.blue[50] : Colors.orange[50], // Biru jika aktif, Orange jika pending
+                  color: isVerified ? Colors.blue[50] : Colors.orange[50],
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -237,15 +249,16 @@ void _navigateToDetail(Map<String, dynamic> data) {
                 ),
               ),
               const SizedBox(width: 15),
-              
-              // Info Teks
+
+              // Info Teks (RT & Nama)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       "RT $nomorRt",
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -260,7 +273,7 @@ void _navigateToDetail(Map<String, dynamic> data) {
                 ),
               ),
 
-              // Chip Status (Pojok Kanan)
+              // Chip Status (Pojok Kanan - Aktif/Pending)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
