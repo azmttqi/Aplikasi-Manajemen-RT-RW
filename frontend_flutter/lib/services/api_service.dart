@@ -489,4 +489,29 @@ static Future<List<dynamic>> getStatistikPerRt() async {
       throw Exception(result['message'] ?? 'Gagal mengambil data per RT');
     }
   }
+
+  // Notifikasi untuk Warga (Hasil Pengajuan)
+  static Future<List<dynamic>> getNotifikasiWarga() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    
+    // Pastikan URL-nya sesuai route backend
+    final url = Uri.parse('$baseUrl/warga/notifikasi'); 
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final result = jsonDecode(response.body);
+    if (response.statusCode == 200 && result['success'] == true) {
+      return result['data'];
+    } else {
+      // Jika kosong atau error, kembalikan list kosong agar tidak crash
+      return []; 
+    }
+  }
 }

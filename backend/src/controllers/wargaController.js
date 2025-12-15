@@ -823,3 +823,38 @@ export const getNotificationsRW = async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil notifikasi" });
   }
 };
+/* ============================================================
+   🔔 NOTIFIKASI WARGA (Hanya Status Approved/Rejected)
+============================================================ */
+export const getNotifikasiWarga = async (req, res) => {
+  try {
+    const userId = req.user.id_pengguna;
+
+    // 1. Ambil Notifikasi dari tabel pengajuan_perubahan
+    // Syarat: Milik user tersebut DAN statusnya SUDAH SELESAI (bukan pending)
+    const query = `
+      SELECT 
+        p.id,
+        p.keterangan,
+        p.status,
+        p.updated_at, -- Kita pakai waktu update (waktu diputuskan RT)
+        p.created_at  -- Backup kalau updated_at null
+      FROM pengajuan_perubahan p
+      JOIN warga w ON p.id_warga = w.id_warga
+      WHERE w.pengguna_id = $1 
+      AND p.status != 'pending' -- <--- FILTER KUNCI: Hanya yang sudah diproses
+      ORDER BY p.updated_at DESC
+    `;
+
+    const result = await pool.query(query, [userId]);
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+
+  } catch (err) {
+    console.error("Error Notif Warga:", err.message);
+    res.status(500).json({ message: "Gagal mengambil notifikasi" });
+  }
+};

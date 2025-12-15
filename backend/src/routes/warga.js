@@ -2,7 +2,7 @@
 import express from "express";
 import {
     getDataDiri, updateDataDiri, 
-    getDataList, addWarga, ajukanPerubahan, getRiwayatSaya,
+    getDataList, addWarga, ajukanPerubahan, getRiwayatSaya, getNotifikasiWarga,
     getPendingWargaForRT, verifikasiWarga, updateWarga, deleteWarga, getDaftarPengajuanRT, verifikasiPengajuan, getRejectedWargaForRT,
     getAllWargaByRW, getStatistikWargaByRW, getDashboardRW, getNotificationsRW, verifikasiAkun,
 } from "../controllers/wargaController.js";
@@ -30,6 +30,7 @@ router.get("/", verifyToken, getDataList);
 router.post("/", verifyToken, addWarga);
 router.post("/pengajuan", verifyToken, ajukanPerubahan);
 router.get("/pengajuan/riwayat", verifyToken, getRiwayatSaya);
+router.get("/notifikasi", verifyToken, getNotifikasiWarga);
 
 // =================================================================
 // 🟠 KHUSUS RT
