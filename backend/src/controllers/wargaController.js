@@ -82,27 +82,52 @@ export const getAllWarga = async (req, res) => {
 };
 
 /* ============================================================
-   ✏️ UPDATE DATA WARGA (berdasarkan NIK)
-============================================================ */
+   ✏️ UPDATE DATA WARGA LENGKAP (Oleh RT)
+   ============================================================ */
 export const updateWarga = async (req, res) => {
-  const { nik } = req.params;
-  const { nama_lengkap, no_kk, status_verifikasi } = req.body;
+  // Kita pakai ID Warga (bukan NIK) agar lebih aman saat NIK ikut diubah
+  const { id } = req.params; 
+  
+  const { 
+    nama_lengkap, nik, no_kk, tempat_lahir, tanggal_lahir, 
+    jenis_kelamin, agama, pekerjaan, status_perkawinan, 
+    golongan_darah, kewarganegaraan, status_verifikasi 
+  } = req.body;
 
   try {
     const result = await pool.query(
       `UPDATE warga
-       SET nama_lengkap = COALESCE($1, nama_lengkap),
-           no_kk = COALESCE($2, no_kk),
-           status_verifikasi = COALESCE($3, status_verifikasi)
-       WHERE nik = $4
+       SET 
+         nama_lengkap = COALESCE($1, nama_lengkap),
+         nik = COALESCE($2, nik),
+         no_kk = COALESCE($3, no_kk),
+         tempat_lahir = COALESCE($4, tempat_lahir),
+         tanggal_lahir = COALESCE($5, tanggal_lahir),
+         jenis_kelamin = COALESCE($6, jenis_kelamin),
+         agama = COALESCE($7, agama),
+         pekerjaan = COALESCE($8, pekerjaan),
+         status_perkawinan = COALESCE($9, status_perkawinan),
+         golongan_darah = COALESCE($10, golongan_darah),
+         kewarganegaraan = COALESCE($11, kewarganegaraan),
+         status_verifikasi = COALESCE($12, status_verifikasi)
+       WHERE id_warga = $13
        RETURNING *`,
-      [nama_lengkap, no_kk, status_verifikasi, nik]
+      [
+        nama_lengkap, nik, no_kk, tempat_lahir, tanggal_lahir, 
+        jenis_kelamin, agama, pekerjaan, status_perkawinan, 
+        golongan_darah, kewarganegaraan, status_verifikasi, 
+        id // Parameter ke-13
+      ]
     );
 
     if (result.rowCount === 0)
       return res.status(404).json({ message: "Warga tidak ditemukan" });
 
-    res.json({ message: "Data warga berhasil diperbarui", data: result.rows[0] });
+    res.json({ 
+        message: "Data warga berhasil diperbarui sepenuhnya", 
+        data: result.rows[0] 
+    });
+
   } catch (err) {
     console.error("❌ Gagal update warga:", err.message);
     res.status(500).json({ message: "Gagal memperbarui data warga", error: err.message });
@@ -306,48 +331,24 @@ export const getDashboardRW = async (req, res) => {
 };
 
 /* ============================================================
-   🔍 GET DATA LIST (FIX FINAL: Filter Disetujui + No Alamat)
+   🔍 GET DATA LIST (FIX: Ambil w.* agar data detail ikut terkirim)
 ============================================================ */
 export const getDataList = async (req, res) => {
   try {
     const userId = req.user.id_pengguna; 
     const { search } = req.query; 
     
-    // 1. DEKLARASI VARIABEL (Supaya tidak error "query is not defined")
     let query = ""; 
     let params = [];
 
-    // 2. Cek Apakah RW?
+    // 1. Cek Apakah RW?
     const rwCheck = await pool.query("SELECT id_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
     
     if (rwCheck.rows.length > 0) {
-      const idRw = rwCheck.rows[0].id_rw;
-      params.push(idRw); 
-
-      // QUERY RW
-      query = `
-        SELECT 
-            rt.id_rt AS id,  
-            rt.kode_rt AS nomor_rt,       
-            rt.alamat_rt,
-            u.username AS nama_ketua_rt, 
-            u.email,
-            u.status_verifikasi_id,
-            (SELECT COUNT(*) FROM warga w WHERE w.id_rt = rt.id_rt AND w.status_verifikasi ILIKE 'disetujui') AS jumlah_warga
-        FROM wilayah_rt rt
-        LEFT JOIN pengguna u ON rt.id_pengguna = u.id_pengguna
-        WHERE rt.id_rw = $1
-      `;
-
-      if (search) {
-        query += ` AND (u.username ILIKE $2 OR rt.kode_rt ILIKE $2)`;
-        params.push(`%${search}%`);
-      }
-      
-      query += " ORDER BY rt.kode_rt ASC"; 
+      // ... (Bagian RW biarkan saja / sesuaikan jika perlu) ...
     } 
     
-    // 3. Cek Apakah RT?
+    // 2. Cek Apakah RT? (FOKUS DI SINI)
     else {
       const rtCheck = await pool.query("SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
       
@@ -355,18 +356,14 @@ export const getDataList = async (req, res) => {
         const idRt = rtCheck.rows[0].id_rt;
         params.push(idRt); 
         
-        // QUERY RT (FILTER AKTIF)
+        // --- PERBAIKAN DISINI ---
+        // Ganti query SELECT-nya agar mengambil SEMUA kolom warga (w.*)
         query = `
           SELECT 
-            w.id_warga AS id, 
-            w.nama_lengkap, 
-            w.nik, 
-            w.no_kk, 
-            -- w.alamat,  <-- SAYA HAPUS KARENA ERROR COLUMN NOT EXIST
-            w.status_verifikasi 
+            w.*,  -- <--- PENTING! Ambil semua kolom (agama, pekerjaan, dll)
+            w.id_warga AS id -- Alias id biar frontend gak bingung
           FROM warga w
           WHERE w.id_rt = $1 
-          -- FILTER: HANYA YANG DISETUJUI (HURUF BESAR/KECIL SAMA SAJA)
           AND w.status_verifikasi ILIKE 'disetujui'
         `;
 
@@ -376,6 +373,7 @@ export const getDataList = async (req, res) => {
         }
 
         query += " ORDER BY w.nama_lengkap ASC";
+
       } else {
         return res.status(403).json({ message: "Akses ditolak." });
       }
@@ -719,5 +717,82 @@ export const getDaftarPengajuanRT = async (req, res) => {
   } catch (err) {
     console.error("Error getDaftarPengajuanRT:", err.message);
     res.status(500).json({ message: "Server Error saat mengambil notifikasi" });
+  }
+};
+
+/* ============================================================
+   ✅ VERIFIKASI PENGAJUAN DATA (RT Setujui/Tolak)
+   ============================================================ */
+export const verifikasiPengajuan = async (req, res) => {
+  const { id } = req.params; // Ini adalah id_pengajuan
+  const { status } = req.body; // 'disetujui' atau 'ditolak'
+
+  try {
+    // Validasi input
+    if (!['disetujui', 'ditolak'].includes(status)) {
+        return res.status(400).json({ message: "Status harus 'disetujui' atau 'ditolak'" });
+    }
+
+    // Update status di tabel pengajuan_perubahan
+    const result = await pool.query(
+        `UPDATE pengajuan_perubahan 
+         SET status = $1, updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $2 
+         RETURNING *`,
+        [status, id]
+    );
+
+    if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Data pengajuan tidak ditemukan." });
+    }
+
+    // (OPSIONAL) Jika disetujui, di masa depan kamu bisa tambahkan logika 
+    // untuk otomatis update data warga di sini. 
+    // Untuk sekarang kita hanya ubah status tiketnya saja.
+
+    res.json({
+        success: true,
+        message: `Pengajuan berhasil ${status}`,
+        data: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("Error verifikasiPengajuan:", err.message);
+    res.status(500).json({ message: "Gagal memproses pengajuan" });
+  }
+};
+
+/* ============================================================
+   🗑️ AMBIL DAFTAR WARGA DITOLAK (REVISI JOIN)
+   ============================================================ */
+export const getRejectedWargaForRT = async (req, res) => {
+  try {
+    const userId = req.user.id_pengguna;
+
+    // 1. Ambil ID RT
+    const rtRes = await pool.query("SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
+    if (rtRes.rowCount === 0) return res.status(403).json({ message: "Bukan RT" });
+    const id_rt = rtRes.rows[0].id_rt;
+
+    // 2. Ambil warga status 'ditolak' DENGAN JOIN ALAMAT
+    const result = await pool.query(
+      `SELECT 
+          w.id_warga, 
+          w.nama_lengkap, 
+          w.nik, 
+          rt.alamat_rt AS alamat, -- Kita ambil dari tabel RT dan alias jadi 'alamat'
+          w.created_at, 
+          w.status_verifikasi 
+       FROM warga w
+       JOIN wilayah_rt rt ON w.id_rt = rt.id_rt -- <--- JOIN WAJIB
+       WHERE w.id_rt = $1 AND w.status_verifikasi = 'ditolak'
+       ORDER BY w.created_at DESC`,
+      [id_rt]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error("Error getRejected:", err.message); // Cek terminal backend kalau error lagi
+    res.status(500).json({ message: "Server Error" });
   }
 };

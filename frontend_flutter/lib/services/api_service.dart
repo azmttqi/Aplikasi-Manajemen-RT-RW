@@ -232,18 +232,23 @@ class ApiService {
     }
   }
 
+  // Edit Data Warga Lengkap (RT Action)
   static Future<bool> editWarga(int idWarga, Map<String, dynamic> data) async {
     try {
+      // Pastikan endpointnya pakai ID (/warga/:id)
       final response = await http.put(
-        Uri.parse("$baseUrl/warga/$idWarga"),
+        Uri.parse("$baseUrl/warga/$idWarga"), 
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $_token",
         },
         body: jsonEncode(data),
       );
+      
+      print("✏️ Edit Warga ID $idWarga: ${response.statusCode}");
       return response.statusCode == 200;
     } catch (e) {
+      print("❌ Error editWarga: $e");
       return false;
     }
   }
@@ -263,64 +268,28 @@ class ApiService {
   // ===============================================================
   // 🟢 FIX: AMBIL 2 DATA SEKALIGUS (WARGA BARU + PENGAJUAN)
   // ===============================================================
-  static Future<Map<String, dynamic>?> getRtNotifications() async {
+static Future<Map<String, dynamic>?> getRtNotifications() async {
     try {
-      // 1. Siapkan 2 URL Endpoint
-      final urlWargaBaru = Uri.parse("$baseUrl/warga/pending");
-      final urlPengajuan = Uri.parse("$baseUrl/warga/pengajuan/rt"); // Endpoint baru!
-
-      print("🔄 Fetching RT Notifications...");
-
-      // 2. Panggil API secara bersamaan (Paralel)
       final responses = await Future.wait([
-        http.get(
-          urlWargaBaru,
-          headers: {
-            'Authorization': 'Bearer $_token',
-            'Content-Type': 'application/json',
-          },
-        ),
-        http.get(
-          urlPengajuan,
-          headers: {
-            'Authorization': 'Bearer $_token',
-            'Content-Type': 'application/json',
-          },
-        ),
+        http.get(Uri.parse('$baseUrl/warga/pending'), headers: {'Authorization': 'Bearer $_token'}),      // 0: Baru
+        http.get(Uri.parse('$baseUrl/warga/pengajuan/rt'), headers: {'Authorization': 'Bearer $_token'}), // 1: Update Data
+        http.get(Uri.parse('$baseUrl/warga/rejected'), headers: {'Authorization': 'Bearer $_token'}),     // 2: Ditolak (BARU)
       ]);
 
-      final resBaru = responses[0];   // Hasil Warga Baru
-      final resUpdate = responses[1]; // Hasil Pengajuan Update
-
-      print("📩 Status Warga Baru: ${resBaru.statusCode}");
-      print("📩 Status Pengajuan: ${resUpdate.statusCode}");
-
-      // 3. Olah Datanya
-      List<dynamic> listWargaBaru = [];
-      List<dynamic> listPengajuan = [];
-
-      // Cek Warga Baru
-      if (resBaru.statusCode == 200) {
-        final json = jsonDecode(resBaru.body);
-        listWargaBaru = json['data'] ?? [];
+      // Helper function biar kodingan pendek
+      List<dynamic> parse(http.Response res) {
+        if (res.statusCode == 200) return jsonDecode(res.body)['data'] ?? [];
+        return [];
       }
 
-      // Cek Pengajuan Update
-      if (resUpdate.statusCode == 200) {
-        final json = jsonDecode(resUpdate.body);
-        listPengajuan = json['data'] ?? [];
-      } else {
-        print("⚠️ Gagal ambil pengajuan: ${resUpdate.body}");
-      }
-
-      // 4. Kembalikan gabungan data
       return {
-        "pendaftaran_baru": listWargaBaru,
-        "pengajuan_update": listPengajuan, // <-- SEKARANG SUDAH TERISI!
+        "pendaftaran_baru": parse(responses[0]),
+        "pengajuan_update": parse(responses[1]),
+        "warga_ditolak": parse(responses[2]), // <--- Data Baru
       };
 
     } catch (e) {
-      print("❌ Error getRtNotifications: $e");
+      print("❌ Error Notif: $e");
       return null;
     }
   }
@@ -354,11 +323,32 @@ class ApiService {
   }
 
   // 3. Placeholder Update Data (Biar file notifikasi tidak merah)
+// Update Status Pengajuan Perubahan Data (Setujui/Tolak)
   static Future<bool> verifyUpdateData(int idPengajuan, String status) async {
-    // Nanti diisi kalau backend update data sudah ada
-    return true; 
-  }
+    try {
+      // Endpoint ini akan kita buat di backend sebentar lagi
+      final url = Uri.parse("$baseUrl/warga/pengajuan/verify/$idPengajuan");
+      
+      print("🚀 Memproses Pengajuan ID: $idPengajuan -> Status: $status");
 
+      final response = await http.put(
+        url,
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'status': status, // 'disetujui' atau 'ditolak'
+        }),
+      );
+
+      print("📩 Response Server: ${response.body}");
+      return response.statusCode == 200;
+    } catch (e) {
+      print("❌ Error verifyUpdateData: $e");
+      return false;
+    }
+  }
   // ===========================================================================
   // 4. FITUR KHUSUS RW & DASHBOARD
   // ===========================================================================

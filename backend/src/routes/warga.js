@@ -3,7 +3,7 @@ import express from "express";
 import {
     getDataDiri, updateDataDiri, 
     getDataList, addWarga, ajukanPerubahan, getRiwayatSaya,
-    getPendingWargaForRT, verifikasiWarga, updateWarga, deleteWarga, getDaftarPengajuanRT,
+    getPendingWargaForRT, verifikasiWarga, updateWarga, deleteWarga, getDaftarPengajuanRT, verifikasiPengajuan, getRejectedWargaForRT,
     getAllWargaByRW, getStatistikWargaByRW, getDashboardRW, getNotificationsRW, verifikasiAkun,
 } from "../controllers/wargaController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
@@ -37,6 +37,8 @@ router.get("/pengajuan/riwayat", verifyToken, getRiwayatSaya);
 router.get("/pending", verifyToken, ensureRoleRT, getPendingWargaForRT);
 router.put("/verify/:id_warga", verifyToken, ensureRoleRT, verifikasiWarga);
 router.get("/pengajuan/rt", verifyToken, getDaftarPengajuanRT);
+router.put("/pengajuan/verify/:id", verifyToken, ensureRoleRT, verifikasiPengajuan);
+router.get("/rejected", verifyToken, ensureRoleRT, getRejectedWargaForRT);
 
 // =================================================================
 // ⛔ ROUTE PARAMETER ID (Sekarang aman di bawah sini)

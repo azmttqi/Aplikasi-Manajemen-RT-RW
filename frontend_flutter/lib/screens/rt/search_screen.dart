@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import 'edit_warga_screen.dart'; // Pastikan path-nya benar
+import 'detail_warga_screen.dart'; // Pastikan dia memanggil file yang ada di folder yang sama
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -100,8 +102,17 @@ class _SearchScreenState extends State<SearchScreen> {
                                   ],
                                 ),
                                 trailing: const Icon(Icons.verified, size: 18, color: Colors.blue), // Icon Verified
-                                onTap: () {
-                                  _showWargaDetail(warga);
+                                onTap: () async {
+                                  bool? refreshNeeded = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => DetailWargaScreen(data: warga), // Panggil Detail Screen
+                                    ),
+                                  );
+
+                                  if (refreshNeeded == true && mounted) {
+                                    _searchWarga(""); // Refresh list kalau data berubah
+                                  }
                                 },
                               ),
                             );
@@ -138,14 +149,51 @@ class _SearchScreenState extends State<SearchScreen> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text("Detail Warga"),
+              // ---------------------------------------------------------
+              // 1. BAGIAN JUDUL & TOMBOL EDIT (BARU)
+              // ---------------------------------------------------------
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Detail Warga"),
+                  // 👇 TOMBOL PENSIL (EDIT)
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    tooltip: "Edit Data Lengkap",
+                    onPressed: () async {
+                      Navigator.pop(context); // Tutup popup dulu
+                      
+                      // Pindah ke layar edit yang baru kita buat (Langkah 4)
+                      bool? result = await Navigator.push(
+                        context, 
+                        MaterialPageRoute(
+                          builder: (context) => EditWargaScreen(warga: warga),
+                        ),
+                      );
+
+                      // Jika berhasil edit (result == true), refresh halaman list
+                      if (result == true && mounted) {
+                        _searchWarga(""); // Refresh data agar perubahan terlihat
+                      }
+                    },
+                  )
+                ],
+              ),
+              
+              // ---------------------------------------------------------
+              // 2. BAGIAN KONTEN (SAMA SEPERTI SEBELUMNYA)
+              // ---------------------------------------------------------
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _detailRow("Nama", warga['nama_lengkap']),
                   _detailRow("NIK", warga['nik']),
                   _detailRow("KK", warga['no_kk']),
-                  // _detailRow("Alamat", warga['alamat']), // Alamat kita skip dulu
+                  // Tampilkan data lengkap lainnya jika ada
+                  _detailRow("TTL", "${warga['tempat_lahir'] ?? '-'}, ${warga['tanggal_lahir'] ?? '-'}"),
+                  _detailRow("Agama", warga['agama']),
+                  _detailRow("Pekerjaan", warga['pekerjaan']),
+                  
                   const SizedBox(height: 10),
                   Container(
                     width: double.infinity,
@@ -162,11 +210,14 @@ class _SearchScreenState extends State<SearchScreen> {
                   )
                 ],
               ),
+
+              // ---------------------------------------------------------
+              // 3. BAGIAN TOMBOL BAWAH (SAMA SEPERTI SEBELUMNYA)
+              // ---------------------------------------------------------
               actions: [
                 // TOMBOL BATALKAN VERIFIKASI (UNDO)
                 TextButton(
                   onPressed: isProcessing ? null : () async {
-                    // Konfirmasi dulu biar gak kepencet lagi
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
@@ -182,19 +233,19 @@ class _SearchScreenState extends State<SearchScreen> {
                     if (confirm == true) {
                       setStateDialog(() => isProcessing = true);
                       
-                      // Panggil API untuk ubah status jadi 'pending'
-                      // Pastikan ID dikonversi ke int
-                      int idWarga = int.tryParse(warga['id'].toString()) ?? 0;
+                      // Pastikan ID dikonversi ke int dengan benar
+                      // Cek apakah key-nya 'id' atau 'id_warga'
+                      var rawId = warga['id'] ?? warga['id_warga'];
+                      int idWarga = int.tryParse(rawId.toString()) ?? 0;
                       
-                      // Kita pakai fungsi verifyWargaBaru yang sudah ada, kirim status 'pending'
                       bool success = await ApiService.verifyWargaBaru(idWarga, 'pending');
 
                       if (mounted) {
                         Navigator.pop(context); // Tutup Dialog Detail
                         if (success) {
-                          _searchWarga(""); // Refresh Halaman Search (Data akan hilang)
+                          _searchWarga(""); // Refresh Halaman Search
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Verifikasi dibatalkan. Data kembali ke Notifikasi anulir ↩️"))
+                            const SnackBar(content: Text("Verifikasi dibatalkan ↩️"))
                           );
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -210,7 +261,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     : const Text("Batalkan Verifikasi"),
                 ),
                 
-                // TOMBOL TUTUP BIASA
+                // TOMBOL TUTUP
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text("Tutup"),

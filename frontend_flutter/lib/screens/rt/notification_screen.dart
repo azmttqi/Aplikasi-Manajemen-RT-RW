@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/api_service.dart'; 
+import '../../services/api_service.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -12,21 +12,24 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
   late TabController _tabController;
   bool _isLoading = true;
 
-  // Variabel penampung data asli
+  // Variabel penampung data
   List<dynamic> _newRegistrations = [];
   List<dynamic> _dataUpdates = [];
+  List<dynamic> _rejectedList = []; // <--- LIST BARU (DITOLAK)
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _fetchData(); 
+    // UBAH LENGTH JADI 3 (Verifikasi, Update, Ditolak)
+    _tabController = TabController(length: 3, vsync: this);
+    _fetchData();
   }
 
-  // FUNGSI TARIK DATA DARI API
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
     
+    // Pastikan ApiService.getRtNotifications() kamu sudah mengembalikan 3 key
+    // (pendaftaran_baru, pengajuan_update, warga_ditolak) sesuai panduan sebelumnya.
     final result = await ApiService.getRtNotifications();
     
     if (mounted) {
@@ -34,6 +37,7 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
         if (result != null) {
           _newRegistrations = result['pendaftaran_baru'] ?? [];
           _dataUpdates = result['pengajuan_update'] ?? [];
+          _rejectedList = result['warga_ditolak'] ?? []; // <--- AMBIL DATA DITOLAK
         }
         _isLoading = false;
       });
@@ -47,20 +51,27 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F2E5),
+      backgroundColor: const Color(0xFFF8F2E5), // Warna asli kamu
       appBar: AppBar(
         title: const Text("Permohonan Warga", style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         elevation: 0,
+        // centerTitle: true, // Biar judul pas di tengah
         iconTheme: const IconThemeData(color: Colors.black),
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.green,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold), // Teks aktif tebal
           unselectedLabelColor: Colors.grey,
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
           indicatorColor: Colors.green,
+          indicatorWeight: 3, // Ketebalan garis
+          indicatorSize: TabBarIndicatorSize.tab, // <--- PENTING: Garis selebar kotak tab
+          // isScrollable: false, // Defaultnya false, jadi akan memenuhi lebar layar (Rapi)
           tabs: const [
-            Tab(text: "Verifikasi Akun"),
-            Tab(text: "Update Data"),
+            Tab(text: "Verifikasi"), 
+            Tab(text: "Update"),     
+            Tab(text: "Ditolak"),    
           ],
         ),
       ),
@@ -69,22 +80,30 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
         : TabBarView(
             controller: _tabController,
             children: [
+              // TAB 1: PENDAFTARAN BARU
               RefreshIndicator(
                 onRefresh: _onRefresh,
                 child: _buildRegistrationList(),
               ),
+              // TAB 2: UPDATE DATA
               RefreshIndicator(
                 onRefresh: _onRefresh,
                 child: _buildUpdateDataList(),
+              ),
+              // TAB 3: DITOLAK (RECYCLE BIN)
+              RefreshIndicator(
+                onRefresh: _onRefresh,
+                child: _buildRejectedList(),
               ),
             ],
           ),
     );
   }
 
+  // --- BUILDER LIST MASING-MASING TAB ---
+
   Widget _buildRegistrationList() {
     if (_newRegistrations.isEmpty) return _emptyState("Tidak ada pendaftaran baru");
-    
     return ListView.builder(
       padding: const EdgeInsets.all(15),
       itemCount: _newRegistrations.length,
@@ -99,6 +118,7 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
           color: Colors.blue,
           itemData: item,
           isRegistration: true,
+          isRejectedTab: false, // Bukan tab ditolak
         );
       },
     );
@@ -106,7 +126,6 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
 
   Widget _buildUpdateDataList() {
     if (_dataUpdates.isEmpty) return _emptyState("Tidak ada pengajuan data");
-
     return ListView.builder(
       padding: const EdgeInsets.all(15),
       itemCount: _dataUpdates.length,
@@ -121,10 +140,36 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
           color: Colors.orange,
           itemData: item,
           isRegistration: false,
+          isRejectedTab: false, // Bukan tab ditolak
         );
       },
     );
   }
+
+  // WIDGET BARU: LIST DITOLAK
+  Widget _buildRejectedList() {
+    if (_rejectedList.isEmpty) return _emptyState("Keranjang sampah kosong");
+    return ListView.builder(
+      padding: const EdgeInsets.all(15),
+      itemCount: _rejectedList.length,
+      itemBuilder: (context, index) {
+        final item = _rejectedList[index];
+        return _buildCard(
+          title: item['nama_lengkap'] ?? "Tanpa Nama",
+          subtitle: "Ditolak pada: ${item['created_at'] ?? '-'}",
+          time: "Ketuk icon panah putar untuk pulihkan",
+          status: "Ditolak",
+          icon: Icons.block,
+          color: Colors.red,
+          itemData: item,
+          isRegistration: true, // Tetap dianggap regis agar logic ID jalan
+          isRejectedTab: true, // <--- INI PENTING
+        );
+      },
+    );
+  }
+
+  // --- COMPONENT CARD (MODIFIKASI DIKIT UNTUK TOMBOL RESTORE) ---
 
   Widget _buildCard({
     required String title,
@@ -135,24 +180,16 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
     required Color color,
     required Map<String, dynamic> itemData,
     required bool isRegistration,
+    required bool isRejectedTab, // Parameter baru
   }) {
-    // 1. Normalisasi Status
+    // Logic warna badge (Sama kayak punya kamu)
     String statusLower = status.toLowerCase(); 
     bool isPending = statusLower == 'menunggu' || statusLower == 'pending';
-    bool isApproved = statusLower == 'disetujui' || statusLower == 'approved';
     bool isRejected = statusLower == 'ditolak' || statusLower == 'rejected';
 
-    // 2. Warna Badge
     Color statusColor = Colors.grey;
     if (isPending) statusColor = Colors.orange;
-    if (isApproved) statusColor = Colors.green;
-    if (isRejected) statusColor = Colors.red;
-
-    // 3. Teks Tampilan
-    String displayStatus = status;
-    if (isPending) displayStatus = "Menunggu";
-    if (isApproved) displayStatus = "Disetujui";
-    if (isRejected) displayStatus = "Ditolak";
+    if (isRejected) statusColor = Colors.red; // Merah kalau ditolak
 
     return Card(
       margin: const EdgeInsets.only(bottom: 15),
@@ -172,56 +209,98 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
             Text(time, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
           ],
         ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: statusColor),
-          ),
-          child: Text(
-            displayStatus,
-            style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
-          ),
-        ),
-        // Hanya bisa diklik jika statusnya PENDING
-        onTap: isPending 
+        
+        // --- MODIFIKASI TRAILING (KANAN) ---
+        // Jika Tab Ditolak: Tampilkan Tombol Restore (Panah Hijau)
+        // Jika Tab Biasa: Tampilkan Badge Status
+        trailing: isRejectedTab 
+          ? IconButton(
+              icon: const Icon(Icons.restore_page, color: Colors.green, size: 30),
+              tooltip: "Pulihkan Warga",
+              onPressed: () => _showRestoreDialog(itemData),
+            )
+          : Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: statusColor),
+              ),
+              child: Text(
+                status,
+                style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ),
+            
+        // Klik Card hanya aktif jika Pending (bukan di tab ditolak)
+        onTap: (!isRejectedTab && isPending) 
             ? () => _showActionDialog(itemData, isRegistration) 
             : null,
       ),
     );
   }
 
-  // DIALOG AKSI (VERSI FIX ANTI CRASH)
-// GANTI FUNGSI INI DI DALAM notification_screen.dart
+  // --- LOGIKA RESTORE (PULIHKAN) ---
+  void _showRestoreDialog(Map<String, dynamic> item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Pulihkan Warga?"),
+        content: Text("Warga '${item['nama_lengkap']}' akan dikembalikan statusnya menjadi 'Menunggu' dan muncul kembali di tab Verifikasi Akun."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), 
+            child: const Text("Batal", style: TextStyle(color: Colors.grey))
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              setState(() => _isLoading = true);
 
+              // Ambil ID
+              var rawId = item['id'] ?? item['id_warga'];
+              int idWarga = int.tryParse(rawId.toString()) ?? 0;
+
+              // Panggil API verify dengan status 'pending' (Reset)
+              bool success = await ApiService.verifyWargaBaru(idWarga, 'pending');
+
+              if (mounted) {
+                if (success) {
+                  _fetchData(); // Refresh Data
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Warga berhasil dipulihkan! ♻️"), backgroundColor: Colors.green)
+                  );
+                } else {
+                  setState(() => _isLoading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Gagal memulihkan data"), backgroundColor: Colors.red)
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            icon: const Icon(Icons.restore, color: Colors.white, size: 18),
+            label: const Text("Ya, Pulihkan", style: TextStyle(color: Colors.white)),
+          )
+        ],
+      ),
+    );
+  }
+
+  // --- DIALOG AKSI LAMA (Tetap dipakai untuk Tab 1 & 2) ---
   void _showActionDialog(Map<String, dynamic> item, bool isRegistration) {
     bool isProcessing = false;
 
-    // --- DEBUGGING: CEK ISI DATA DI CONSOLE ---
-    print("DATA YANG DIKLIK: $item"); 
-
-    // 1. CARI ID DENGAN CERDAS
-    // Cek apakah key-nya 'id' ATAU 'id_warga'
-    var rawId = item['id'] ?? item['id_warga']; 
+    var rawId = item['id'] ?? item['id_warga'] ?? item['id_pengajuan']; 
     int idItem = int.tryParse(rawId.toString()) ?? 0;
 
-    print("ID YANG DITEMUKAN: $idItem"); // Pastikan ini BUKAN 0
-
-    // Ambil data lain (String)
     String nama = item['nama_lengkap'] ?? item['nama'] ?? "Tanpa Nama";
     String alamat = item['alamat'] ?? "-";
     String nik = item['nik'] ?? "-";
     String noKk = item['no_kk'] ?? "-";
     String keterangan = item['keterangan'] ?? "-";
 
-    if (idItem == 0) {
-      // Jika ID masih 0, tampilkan error dan jangan buka dialog aksi
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ID Warga tidak ditemukan di data ($item)")),
-      );
-      return;
-    }
+    if (idItem == 0) return;
 
     showDialog(
       context: context,
@@ -255,26 +334,21 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
                   onPressed: isProcessing ? null : () => Navigator.pop(context),
                   child: const Text("Batal", style: TextStyle(color: Colors.grey)),
                 ),
-                
                 // TOMBOL TOLAK
                 OutlinedButton(
                   onPressed: isProcessing ? null : () async {
                     setStateDialog(() => isProcessing = true);
                     bool success;
-                    
                     if (isRegistration) {
                       success = await ApiService.verifyWargaBaru(idItem, 'ditolak');
                     } else {
                       success = await ApiService.verifyUpdateData(idItem, 'ditolak');
                     }
-
                     if (mounted) {
                       Navigator.pop(context);
                       if (success) {
                         _fetchData(); 
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Ditolak ❌")));
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal memproses")));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Ditolak ❌. Masuk ke tab Riwayat.")));
                       }
                     }
                   },
@@ -283,26 +357,21 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
                       ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2)) 
                       : const Text("Tolak"),
                 ),
-
                 // TOMBOL SETUJUI
                 ElevatedButton(
                   onPressed: isProcessing ? null : () async {
                     setStateDialog(() => isProcessing = true);
                     bool success;
-                    
                     if (isRegistration) {
                       success = await ApiService.verifyWargaBaru(idItem, 'disetujui');
                     } else {
                       success = await ApiService.verifyUpdateData(idItem, 'disetujui');
                     }
-
                     if (mounted) {
                       Navigator.pop(context);
                       if (success) {
                         _fetchData(); 
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Disetujui ✅"), backgroundColor: Colors.green));
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal memproses"), backgroundColor: Colors.red));
                       }
                     }
                   },
@@ -333,7 +402,6 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
     );
   }
 
-  // --- INI DIA FUNGSI YANG HILANG ---
   Widget _emptyState(String text) {
     return Center(
       child: Column(
