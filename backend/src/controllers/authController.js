@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import pool from "../config/db.js";
 import dotenv from "dotenv";
+import nodemailer from 'nodemailer';
 dotenv.config();
 
 // ==========================================
@@ -454,5 +455,218 @@ export const getWargaDetailById = async (req, res) => {
   } catch (err) {
     console.error("Error getWargaDetail:", err.message);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+// ============================================================
+// 7. FORGOT PASSWORD (KIRIM EMAIL RESET)
+// ============================================================
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // 1. Cek apakah email terdaftar di database
+    const userCheck = await pool.query("SELECT * FROM pengguna WHERE email = $1", [email]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ message: "Email tidak ditemukan." });
+    }
+
+    // 2. Konfigurasi Nodemailer (Tukang Pos)
+    // Ini mengambil data dari file .env yang baru saja kamu update
+    const transporter = nodemailer.createTransport({
+      host: process.env.MAIL_HOST,       // smtp.googlemail.com
+      port: process.env.MAIL_PORT,       // 465
+      secure: false,                      // true (karena port 465 SSL)
+      auth: {
+        user: process.env.MAIL_USERNAME, // Email kamu
+        pass: process.env.MAIL_PASSWORD  // App Password 16 digit kamu
+      },
+      tls: {
+          rejectUnauthorized: false // Tambahan: Supaya tidak error sertifikat di Docker
+      }
+    });
+
+    // 3. Siapkan Isi Email
+    // (Di aplikasi asli, biasanya di sini kita buat token unik. Ini contoh simulasi link)
+    const resetLink = `http://localhost:5000/api/auth/reset-password-page?email=${email}`; 
+
+    const mailOptions = {
+      from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
+      to: email,
+      subject: 'Permintaan Reset Password - Manajemen RT/RW',
+      text: `Halo,\n\nKami menerima permintaan untuk mereset password akun Anda.\nSilakan klik tautan berikut:\n\n${resetLink}\n\nJika ini bukan Anda, abaikan saja.`,
+      html: `
+        <h3>Halo, Warga!</h3>
+        <p>Kami menerima permintaan reset password.</p>
+        <p>Klik tombol di bawah untuk memproses (Simulasi):</p>
+        <a href="${resetLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a>
+      `
+    };
+
+    // 4. Kirim Email
+    await transporter.sendMail(mailOptions);
+
+    console.log(`✅ Email reset berhasil dikirim ke: ${email}`);
+    res.status(200).json({ message: "Tautan reset berhasil dikirim! Silakan cek email Anda." });
+
+  } catch (error) {
+    console.error("❌ Gagal kirim email:", error);
+    res.status(500).json({ message: "Gagal mengirim email.", error: error.message });
+  }
+};
+
+// ============================================================
+// 8. HALAMAN RESET PASSWORD (HTML)
+// ============================================================
+export const getResetPasswordPage = (req, res) => {
+  const { email } = req.query;
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Reset Kata Sandi - Manajemen RT/RW</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background-color: #f4f7f6;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          margin: 0;
+        }
+        .card {
+          background: white;
+          padding: 40px;
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+          width: 100%;
+          max-width: 400px;
+          text-align: center;
+        }
+        .logo {
+          width: 80px;
+          margin-bottom: 20px;
+        }
+        h2 {
+          color: #2E7D32; /* Hijau Tua mirip aplikasi */
+          margin-bottom: 10px;
+        }
+        p {
+          color: #666;
+          font-size: 14px;
+          margin-bottom: 30px;
+        }
+        .input-group {
+          margin-bottom: 20px;
+          text-align: left;
+        }
+        label {
+          display: block;
+          margin-bottom: 8px;
+          color: #333;
+          font-weight: bold;
+          font-size: 14px;
+        }
+        input[type="password"] {
+          width: 100%;
+          padding: 12px;
+          border: 1px solid #ccc;
+          border-radius: 8px;
+          box-sizing: border-box; /* Agar padding tidak melebarkan input */
+          font-size: 16px;
+          transition: border-color 0.3s;
+        }
+        input[type="password"]:focus {
+          border-color: #2E7D32;
+          outline: none;
+        }
+        button {
+          width: 100%;
+          padding: 14px;
+          background-color: #2E7D32;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: background-color 0.3s;
+        }
+        button:hover {
+          background-color: #1B5E20;
+        }
+        .footer {
+          margin-top: 20px;
+          font-size: 12px;
+          color: #aaa;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <img src="https://cdn-icons-png.flaticon.com/512/609/609803.png" alt="Logo Rumah" class="logo"/>
+        
+        <h2>Atur Ulang Kata Sandi</h2>
+        <p>Silakan masukkan kata sandi baru untuk akun <strong>${email}</strong></p>
+        
+        <form action="/api/auth/reset-password-process" method="POST">
+          <input type="hidden" name="email" value="${email}" />
+          
+          <div class="input-group">
+            <label>Kata Sandi Baru</label>
+            <input type="password" name="newPassword" required placeholder="Minimal 6 karakter" />
+          </div>
+
+          <button type="submit">Simpan Kata Sandi</button>
+        </form>
+
+        <div class="footer">
+          &copy; 2025 Lingkar Warga App
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+};
+// ============================================================
+// 9. PROSES SIMPAN PASSWORD BARU
+// ============================================================
+export const resetPasswordProcess = async (req, res) => {
+  // Karena form HTML mengirim data sebagai form-urlencoded, bukan JSON, 
+  // pastikan app.js punya app.use(express.urlencoded({ extended: true }));
+  // Tapi untuk amannya kita anggap user kirim JSON atau kita handle manual.
+  
+  const { email, newPassword } = req.body;
+
+  try {
+    if (!newPassword || !email) return res.send("<h1>Error: Data tidak lengkap.</h1>");
+
+    // 1. Hash Password Baru
+    // (Kita butuh bcrypt, pastikan sudah di-import di atas. Kalau pakai bcryptjs sesuaikan)
+    // import bcrypt from 'bcrypt'; <-- Pastikan ini ada di paling atas file
+    // Tetapi karena di file ini Anda pakai bcrypt, kita gunakan langsung.
+    // Jika 'bcrypt' belum diimport di file ini, tambahkan importnya.
+    
+    // Anggap bcrypt sudah diimport (karena dipakai di fungsi register/login)
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // 2. Update Database
+    await pool.query("UPDATE pengguna SET password_hash = $1 WHERE email = $2", [hashedPassword, email]);
+
+    res.send(`
+      <div style="text-align:center; padding: 50px;">
+        <h1 style="color: green;">Berhasil! 🎉</h1>
+        <p>Password Anda telah diperbarui.</p>
+        <p>Silakan kembali ke aplikasi dan Login.</p>
+      </div>
+    `);
+
+  } catch (error) {
+    console.error(error);
+    res.send("<h1>Terjadi kesalahan server.</h1>");
   }
 };

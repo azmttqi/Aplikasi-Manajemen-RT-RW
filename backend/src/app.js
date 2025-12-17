@@ -27,6 +27,7 @@ app.use(cors());
 
 // B. Body Parser (Agar bisa baca req.body format JSON)
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // =========================================
 // 3. ROUTING (DAFTAR ALAMAT API)
@@ -41,6 +42,7 @@ app.use('/api/auth', authRoutes);
 // Jika file warga.js belum siap, baris ini bisa dikomentari dulu:
 app.use('/api/warga', wargaRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use(express.urlencoded({ extended: true })); // <--- Tambahkan baris ini agar form HTML terbaca
 // Route Test Token (Hanya bisa diakses jika punya token login)
 app.get('/api/protected', verifyToken, (req, res) => {
   res.json({

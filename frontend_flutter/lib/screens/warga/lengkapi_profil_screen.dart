@@ -14,7 +14,8 @@ class LengkapiProfilScreen extends StatefulWidget {
 }
 
 class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
-  // 1. KONFIGURASI API
+  // --- 1. KONFIGURASI API (Ganti IP di sini saja) ---
+  // Gunakan 10.0.2.2 jika Emulator, atau IP Laptop (misal 192.168.1.5) jika HP fisik
   final String baseUrl = "http://localhost:5000/api";
 
   final _formKey = GlobalKey<FormState>();
@@ -49,6 +50,17 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
     _fetchUserData();
   }
 
+  // --- PERBAIKAN PENTING: MEMBERSIHKAN MEMORI ---
+  @override
+  void dispose() {
+    _nikController.dispose();
+    _namaController.dispose();
+    _tempatLahirController.dispose();
+    _pekerjaanController.dispose();
+    _tanggalLahirController.dispose();
+    super.dispose();
+  }
+
   // --- CEK STATUS VERIFIKASI ---
   void _checkLockStatus() {
     final status = widget.statusVerifikasi.toLowerCase().trim();
@@ -78,6 +90,9 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
           'Content-Type': 'application/json',
         },
       );
+
+      // Cek apakah widget masih aktif sebelum update UI
+      if (!mounted) return;
 
       print("GET Data Response: ${response.statusCode}");
 
@@ -119,6 +134,7 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Sesi berakhir, silakan login kembali"), backgroundColor: Colors.red),
     );
+    // Logout atau kembali ke login bisa ditangani di sini
     Navigator.pop(context);
   }
 
@@ -170,8 +186,10 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
         body: jsonEncode(dataKirim),
       );
 
+      // Cek apakah widget masih aktif sebelum lanjut
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
-        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Data berhasil disimpan! ✅"), backgroundColor: Colors.green),
         );
@@ -182,9 +200,11 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
       }
     } catch (e) {
       print("Error Submit: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal menyimpan data: $e"), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal menyimpan data: $e"), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -363,7 +383,6 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
                       child: _isLocked
                           ? ElevatedButton(
                               onPressed: () {
-                                // Arahkan user kembali atau beri info
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text("Data terkunci. Silakan ajukan perubahan data jika diperlukan.")),
                                 );

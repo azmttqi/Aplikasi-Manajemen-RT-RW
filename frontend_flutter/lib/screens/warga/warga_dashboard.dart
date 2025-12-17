@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Pastikan ada package ini
 import '../../services/api_service.dart';
 import '../../widgets/logo_widget.dart';
 import 'form_pengajuan_screen.dart';
 import 'riwayat_pengajuan_screen.dart';
-import 'lengkapi_profil_screen.dart'; // Pastikan import ini benar
+import 'lengkapi_profil_screen.dart';
 
 class WargaDashboard extends StatefulWidget {
   const WargaDashboard({super.key});
@@ -18,10 +17,11 @@ class _WargaDashboardState extends State<WargaDashboard> {
   String _nama = "Memuat...";
   String _nik = "................";
   String _alamat = "Memuat...";
-  String _rawStatus = "pending"; // Ini status mentah dari database (pending/verified/rejected)
+  String _rawStatus = "pending"; 
 
   // Variabel Data Sensus (Untuk Cek Kelengkapan)
   bool _isDataLengkap = true; 
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -29,82 +29,79 @@ class _WargaDashboardState extends State<WargaDashboard> {
     _fetchData();
   }
 
-  // Fungsi Fetch Data
+  // --- FUNGSI AMBIL DATA ---
   Future<void> _fetchData() async {
+    setState(() => _isLoading = true);
+
     final profil = await ApiService.getMe();
     
-    if (mounted && profil != null) {
-      // 1. Cek apakah kolom wajib sudah terisi?
-      bool lengkap = true;
-      if (profil['jenis_kelamin'] == null ||
-          profil['agama'] == null ||
-          profil['pekerjaan'] == null ||
-          profil['status_perkawinan'] == null) {
-        lengkap = false;
-      }
+    // Cek mounted agar tidak error jika layar sudah ditutup
+    if (mounted) {
+      if (profil != null) {
+        // 1. Cek apakah kolom wajib sudah terisi?
+        bool lengkap = true;
+        if (profil['jenis_kelamin'] == null ||
+            profil['agama'] == null ||
+            profil['pekerjaan'] == null ||
+            profil['status_perkawinan'] == null) {
+          lengkap = false;
+        }
 
-      setState(() {
-        _nama = profil['nama_lengkap'] ?? "Warga";
-        _nik = profil['nik'] ?? "-";
-        _alamat = profil['alamat'] ?? "-";
-        _rawStatus = profil['status'] ?? "pending"; // Ambil status verifikasi
-        _isDataLengkap = lengkap;
-      });
+        setState(() {
+          _nama = profil['nama_lengkap'] ?? "Warga";
+          _nik = profil['nik'] ?? "-";
+          _alamat = profil['alamat'] ?? "-";
+          _rawStatus = profil['status'] ?? "pending";
+          _isDataLengkap = lengkap;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _nama = "Gagal memuat data";
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  // --- LOGIC NAVIGASI KE FORM LENGKAPI DATA ---
+  // --- NAVIGASI KE LENGKAPI PROFIL ---
   void _goToLengkapiProfil() async {
-    // 1. AWAIT: Tunggu sampai halaman formulir ditutup
+    // Tunggu sampai user kembali dari halaman lengkapi profil
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        // PERHATIAN: Hapus 'const' di sini karena kita kirim variabel '_rawStatus'
         builder: (context) => LengkapiProfilScreen(
-          statusVerifikasi: _rawStatus, // <--- INI PERBAIKAN UTAMANYA
+          statusVerifikasi: _rawStatus,
         ),
       ),
     );
 
-    // 2. CHECK: Jika formulir mengirim sinyal 'true' (berhasil simpan)
+    // Jika user berhasil simpan data (result == true), refresh dashboard otomatis
     if (result == true) {
-      print("Data tersimpan, refresh dashboard...");
-      _fetchData(); // Refresh data dashboard
+      _fetchData(); 
     }
   }
 
   // --- HELPER STATUS (Warna & Icon) ---
   Color _getStatusColor() {
-    final statusBersih = _rawStatus.toString().toLowerCase().trim();
-    if (statusBersih == 'verified' || statusBersih == 'disetujui' || statusBersih == '1') {
-      return Colors.green;
-    } else if (statusBersih == 'rejected' || statusBersih == 'ditolak') {
-      return Colors.red;
-    } else {
-      return Colors.orange;
-    }
+    final status = _rawStatus.toLowerCase().trim();
+    if (status == 'verified' || status == 'disetujui' || status == '1') return Colors.green;
+    if (status == 'rejected' || status == 'ditolak') return Colors.red;
+    return Colors.orange;
   }
 
   String _getStatusText() {
-    final statusBersih = _rawStatus.toString().toLowerCase().trim();
-    if (statusBersih == 'verified' || statusBersih == 'disetujui' || statusBersih == '1') {
-      return "Terverifikasi";
-    } else if (statusBersih == 'rejected' || statusBersih == 'ditolak') {
-      return "Ditolak / Perbaiki";
-    } else {
-      return "Menunggu Verifikasi";
-    }
+    final status = _rawStatus.toLowerCase().trim();
+    if (status == 'verified' || status == 'disetujui' || status == '1') return "Terverifikasi";
+    if (status == 'rejected' || status == 'ditolak') return "Ditolak / Perbaiki";
+    return "Menunggu Verifikasi";
   }
 
   IconData _getStatusIcon() {
-    final statusBersih = _rawStatus.toString().toLowerCase().trim();
-    if (statusBersih == 'verified' || statusBersih == 'disetujui' || statusBersih == '1') {
-      return Icons.check_circle;
-    } else if (statusBersih == 'rejected' || statusBersih == 'ditolak') {
-      return Icons.cancel;
-    } else {
-      return Icons.access_time_filled;
-    }
+    final status = _rawStatus.toLowerCase().trim();
+    if (status == 'verified' || status == 'disetujui' || status == '1') return Icons.check_circle;
+    if (status == 'rejected' || status == 'ditolak') return Icons.cancel;
+    return Icons.access_time_filled;
   }
 
   @override
@@ -124,19 +121,19 @@ class _WargaDashboardState extends State<WargaDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- 1. HEADER LOGO ---
+                // 1. HEADER LOGO
                 const Center(
                   child: LogoWidget(height: 150, width: 150),
                 ),
 
-                // --- 2. SAPAAN ---
+                // 2. SAPAAN
                 Text(
                   "Halo, $_nama!",
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 15),
 
-                // --- NOTIFIKASI JIKA DATA BELUM LENGKAP ---
+                // 3. ALERT JIKA DATA BELUM LENGKAP
                 if (!_isDataLengkap) 
                   Container(
                     margin: const EdgeInsets.only(bottom: 20),
@@ -176,7 +173,7 @@ class _WargaDashboardState extends State<WargaDashboard> {
                     ),
                   ),
 
-                // --- 3. KARTU DATA SAYA ---
+                // 4. KARTU DATA SAYA
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -201,7 +198,6 @@ class _WargaDashboardState extends State<WargaDashboard> {
                                 Text("NIK: $_nik", style: const TextStyle(fontSize: 12, color: Colors.black87)),
                               ],
                             ),
-                            // Tombol Detail/Edit Data
                             ElevatedButton(
                               onPressed: _goToLengkapiProfil, 
                               style: ElevatedButton.styleFrom(
@@ -218,7 +214,6 @@ class _WargaDashboardState extends State<WargaDashboard> {
                       ),
                       const Divider(height: 1),
                       
-                      // Status Bar di Bawah Kartu
                       Padding(
                         padding: const EdgeInsets.all(15),
                         child: Row(
@@ -263,7 +258,7 @@ class _WargaDashboardState extends State<WargaDashboard> {
 
                 const SizedBox(height: 25),
 
-                // --- 4. MENU GRID ---
+                // 5. MENU GRID
                 Row(
                   children: [
                     Expanded(

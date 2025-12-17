@@ -1,30 +1,49 @@
 import 'dart:convert';
+import 'dart:async'; // Tambahan untuk Timeout
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 class ApiService {
-  // ⚠️ PENTING:
-  // Ganti 'localhost' dengan '10.0.2.2' jika menggunakan Emulator Android.
-  // Ganti dengan IP Laptop (misal 192.168.1.x) jika menggunakan HP Fisik.
+  // ===========================================================================
+  // ⚙️ KONFIGURASI PUSAT (Ganti IP di sini saja)
+  // ===========================================================================
+  // - Pakai '10.0.2.2' jika pakai Emulator Android
+  // - Pakai IP Laptop (misal '192.168.1.5') jika pakai HP Asli (Harus satu WiFi)
   static const String baseUrl = "http://localhost:5000/api";
 
-  static String? _token; 
+  static const Duration _timeout = Duration(seconds: 15); // Batas waktu koneksi
 
-  // === TOKEN MANAGEMENT ===
-  static void setToken(String token) {
-    _token = token;
+  // ===========================================================================
+  // 🔐 TOKEN & HEADER MANAGEMENT
+  // ===========================================================================
+  
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
   }
 
-  static Future<String?> getToken() async {
-    return _token;
+  static Future<void> setToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', token);
   }
 
   static Future<void> logout() async {
-    _token = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+  }
+
+  // Helper: Membuat Header otomatis (supaya tidak ngetik ulang terus)
+  static Future<Map<String, String>> _getHeaders() async {
+    final token = await getToken();
+    return {
+      "Content-Type": "application/json",
+      if (token != null) "Authorization": "Bearer $token",
+    };
   }
 
   // ===========================================================================
-  // 1. AUTHENTICATION (Login, Register, Get Me, Update Profile)
+  // 1. OTENTIKASI (Login, Register, Lupa Password)
   // ===========================================================================
 
   static Future<Map<String, dynamic>> login(String identifier, String password) async {
@@ -32,31 +51,22 @@ class ApiService {
       final response = await http.post(
         Uri.parse("$baseUrl/auth/login"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "identifier": identifier,
-          "password": password,
-        }),
-      );
+        body: jsonEncode({"identifier": identifier, "password": password}),
+      ).timeout(_timeout);
+
+      final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setToken(data['token']);
+        await setToken(data['token']);
         
+        // Logika penentuan Role
         final user = data['user'];
-        int roleId = 0;
-        if (user['id_role'] != null) {
-          roleId = int.parse(user['id_role'].toString());
-        } else if (user['role'] != null) {
-          roleId = int.parse(user['role'].toString());
-        }
-
-        String roleName;
-        switch (roleId) {
-          case 1: roleName = "RW"; break; 
-          case 2: roleName = "RT"; break;
-          case 3: roleName = "Warga"; break;
-          default: roleName = "unknown";
-        }
+        int roleId = user['id_role'] ?? user['role'] ?? 0;
+        
+        String roleName = "unknown";
+        if (roleId == 1) roleName = "RW";
+        else if (roleId == 2) roleName = "RT";
+        else if (roleId == 3) roleName = "Warga";
 
         return {
           "success": true,
@@ -65,14 +75,10 @@ class ApiService {
           "user": user,
         };
       } else {
-        final data = jsonDecode(response.body);
-        return {
-          "success": false,
-          "message": data['message'] ?? "Login gagal",
-        };
+        return {"success": false, "message": data['message'] ?? "Login gagal"};
       }
     } catch (e) {
-      return {"success": false, "message": "Terjadi kesalahan: $e"};
+      return {"success": false, "message": "Gagal terhubung ke server: $e"};
     }
   }
 
@@ -82,19 +88,14 @@ class ApiService {
     required String email,
     required String username,
     required String password,
-    String? nik,
-    String? noKk,
-    String? tanggalLahir,
-    String? nomorWilayah, 
-    String? alamatWilayah, 
-    String? kodeWilayahBaru,
-    String? kodeInduk,
+    String? nik, String? noKk, String? tanggalLahir,
+    String? nomorWilayah, String? alamatWilayah, 
+    String? kodeWilayahBaru, String? kodeInduk,
   }) async {
     try {
-      String endpoint = "";
+      String endpoint = "/auth/register-warga"; // Default
       if (role == 'RW') endpoint = "/auth/register-rw";
       else if (role == 'RT') endpoint = "/auth/register-rt";
-      else if (role == 'Warga') endpoint = "/auth/register-warga";
       
       final response = await http.post(
         Uri.parse("$baseUrl$endpoint"),
@@ -114,32 +115,46 @@ class ApiService {
           "kode_rw_induk": role == 'RT' ? kodeInduk : null,
           "kode_rt_induk": role == 'Warga' ? kodeInduk : null,
         }),
-      );
+      ).timeout(_timeout);
 
       final data = jsonDecode(response.body);
-      if (response.statusCode == 201) {
-        return { "success": true, "message": data['message'] };
-      } else {
-        return { "success": false, "message": data['message'] ?? "Registrasi gagal" };
-      }
+      return {
+        "success": response.statusCode == 201,
+        "message": data['message'] ?? "Registrasi gagal"
+      };
     } catch (e) {
       return {"success": false, "message": "Koneksi Error: $e"};
     }
   }
 
+  static Future<bool> forgotPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/auth/forgot-password"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email}),
+      ).timeout(_timeout);
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error forgotPassword: $e");
+      return false;
+    }
+  }
+
+  // ===========================================================================
+  // 2. PROFILE & USER DATA (Get Me, Update Data)
+  // ===========================================================================
+
   static Future<Map<String, dynamic>?> getMe() async {
     try {
       final response = await http.get(
         Uri.parse("$baseUrl/auth/me"), 
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $_token",
-        },
-      );
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['data']; 
+        return jsonDecode(response.body)['data']; 
       }
       return null;
     } catch (e) {
@@ -147,85 +162,65 @@ class ApiService {
     }
   }
 
-  // [BARU] Fungsi untuk Melengkapi Data Warga
+  // Update Data Lengkap (Dipakai di lengkapi_profil_screen.dart)
   static Future<Map<String, dynamic>> updateDataWarga(Map<String, dynamic> data) async {
-    final token = await getToken(); // Pastikan kamu punya fungsi getToken
-    if (token == null) return {'success': false, 'message': 'Token tidak ditemukan'};
-
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/warga/update-data'), // Sesuaikan endpoint di routes backend
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('$baseUrl/warga/update-data'),
+        headers: await _getHeaders(),
         body: jsonEncode(data),
-      );
+      ).timeout(_timeout);
 
-      final responseData = jsonDecode(response.body);
-
-      if (response.statusCode == 200) {
-        return {'success': true, 'message': responseData['message']};
-      } else {
-        return {'success': false, 'message': responseData['message'] ?? 'Gagal menyimpan data'};
-      }
+      final result = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'message': result['message'] ?? 'Gagal menyimpan data'
+      };
     } catch (e) {
       return {'success': false, 'message': 'Terjadi kesalahan koneksi: $e'};
     }
   }
 
+  // Update Username/Password/Email
   static Future<Map<String, dynamic>> updateProfile({
     required String currentPassword,
-    String? newEmail,
-    String? newUsername,
-    String? newPassword,
+    String? newEmail, String? newUsername, String? newPassword,
   }) async {
     try {
       final response = await http.put(
         Uri.parse("$baseUrl/auth/update"),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $_token",
-        },
+        headers: await _getHeaders(),
         body: jsonEncode({
           "currentPassword": currentPassword,
           "email": newEmail,
           "username": newUsername,
           "newPassword": newPassword,
         }),
-      );
+      ).timeout(_timeout);
 
       final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'message': data['message']};
-      } else {
-        return {'success': false, 'message': data['message'] ?? 'Gagal update'};
-      }
+      return {
+        'success': response.statusCode == 200,
+        'message': data['message'] ?? 'Gagal update'
+      };
     } catch (e) {
       return {'success': false, 'message': 'Terjadi kesalahan koneksi'};
     }
   }
 
   // ===========================================================================
-  // 2. DATA WARGA & SEARCH (Digunakan RT & Search Screen)
+  // 3. FITUR RT (Manajemen Warga)
   // ===========================================================================
 
   static Future<List<dynamic>> getWargaList({String query = ""}) async {
     try {
-      // Sesuai route backend: router.get("/", ...) di file warga
-      final url = Uri.parse("$baseUrl/warga?search=$query");
-      
       final response = await http.get(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $_token",
-        },
-      );
+        Uri.parse("$baseUrl/warga?search=$query"),
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['data'] ?? []; 
+        return jsonDecode(response.body)['data'] ?? []; 
       }
       return [];
     } catch (e) {
@@ -233,23 +228,16 @@ class ApiService {
     }
   }
 
-  // Edit Data Warga Lengkap (RT Action)
   static Future<bool> editWarga(int idWarga, Map<String, dynamic> data) async {
     try {
-      // Pastikan endpointnya pakai ID (/warga/:id)
       final response = await http.put(
         Uri.parse("$baseUrl/warga/$idWarga"), 
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $_token",
-        },
+        headers: await _getHeaders(),
         body: jsonEncode(data),
-      );
+      ).timeout(_timeout);
       
-      print("✏️ Edit Warga ID $idWarga: ${response.statusCode}");
       return response.statusCode == 200;
     } catch (e) {
-      print("❌ Error editWarga: $e");
       return false;
     }
   }
@@ -258,26 +246,25 @@ class ApiService {
     try {
       final response = await http.delete(
         Uri.parse("$baseUrl/warga/$idWarga"),
-        headers: {"Authorization": "Bearer $_token"},
-      );
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
       return response.statusCode == 200;
     } catch (e) {
       return false;
     }
   }
 
-  // ===============================================================
-  // 🟢 FIX: AMBIL 2 DATA SEKALIGUS (WARGA BARU + PENGAJUAN)
-  // ===============================================================
-static Future<Map<String, dynamic>?> getRtNotifications() async {
+  // Mengambil Notifikasi Dashboard RT (Pending, Pengajuan, Ditolak)
+  static Future<Map<String, dynamic>?> getRtNotifications() async {
     try {
+      final headers = await _getHeaders();
+      
       final responses = await Future.wait([
-        http.get(Uri.parse('$baseUrl/warga/pending'), headers: {'Authorization': 'Bearer $_token'}),      // 0: Baru
-        http.get(Uri.parse('$baseUrl/warga/pengajuan/rt'), headers: {'Authorization': 'Bearer $_token'}), // 1: Update Data
-        http.get(Uri.parse('$baseUrl/warga/rejected'), headers: {'Authorization': 'Bearer $_token'}),     // 2: Ditolak (BARU)
+        http.get(Uri.parse('$baseUrl/warga/pending'), headers: headers),      // 0: Warga Baru
+        http.get(Uri.parse('$baseUrl/warga/pengajuan/rt'), headers: headers), // 1: Update Data
+        http.get(Uri.parse('$baseUrl/warga/rejected'), headers: headers),     // 2: Ditolak
       ]);
 
-      // Helper function biar kodingan pendek
       List<dynamic> parse(http.Response res) {
         if (res.statusCode == 200) return jsonDecode(res.body)['data'] ?? [];
         return [];
@@ -286,108 +273,61 @@ static Future<Map<String, dynamic>?> getRtNotifications() async {
       return {
         "pendaftaran_baru": parse(responses[0]),
         "pengajuan_update": parse(responses[1]),
-        "warga_ditolak": parse(responses[2]), // <--- Data Baru
+        "warga_ditolak": parse(responses[2]),
       };
-
     } catch (e) {
       print("❌ Error Notif: $e");
       return null;
     }
   }
 
-  // 2. Verifikasi Warga (Tombol Setujui/Tolak)
-  // Sesuai Backend: router.put("/verify/:id_warga", ...) -> /api/warga/verify/:id
+  // Verifikasi Warga Baru
   static Future<bool> verifyWargaBaru(int id, String status) async {
     try {
-      final url = Uri.parse("$baseUrl/warga/verify/$id");
-      
-      print("🚀 Kirim Verifikasi ke: $url");
-      print("📦 Data: { status: $status }");
-
       final response = await http.put(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'status': status, // Backend biasanya terima 'disetujui' atau 'ditolak'
-        }),
-      );
+        Uri.parse("$baseUrl/warga/verify/$id"),
+        headers: await _getHeaders(),
+        body: jsonEncode({'status': status}),
+      ).timeout(_timeout);
 
-      print("📩 Response Verifikasi: ${response.body}");
       return response.statusCode == 200;
     } catch (e) {
-      print("❌ Error verifyWargaBaru: $e");
       return false;
     }
   }
 
-  // 3. Placeholder Update Data (Biar file notifikasi tidak merah)
-// Update Status Pengajuan Perubahan Data (Setujui/Tolak)
+  // Verifikasi Pengajuan Perubahan Data
   static Future<bool> verifyUpdateData(int idPengajuan, String status) async {
     try {
-      // Endpoint ini akan kita buat di backend sebentar lagi
-      final url = Uri.parse("$baseUrl/warga/pengajuan/verify/$idPengajuan");
-      
-      print("🚀 Memproses Pengajuan ID: $idPengajuan -> Status: $status");
-
       final response = await http.put(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'status': status, // 'disetujui' atau 'ditolak'
-        }),
-      );
+        Uri.parse("$baseUrl/warga/pengajuan/verify/$idPengajuan"),
+        headers: await _getHeaders(),
+        body: jsonEncode({'status': status}),
+      ).timeout(_timeout);
 
-      print("📩 Response Server: ${response.body}");
       return response.statusCode == 200;
     } catch (e) {
-      print("❌ Error verifyUpdateData: $e");
       return false;
     }
   }
+
   // ===========================================================================
-  // 4. FITUR KHUSUS RW & DASHBOARD
+  // 4. FITUR RW (Dashboard & Statistik)
   // ===========================================================================
 
   static Future<Map<String, dynamic>> getDashboardStats() async {
     try {
       final response = await http.get(
         Uri.parse("$baseUrl/dashboard/stats"), 
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $_token",
-        },
-      );
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
-      } else {
-        return {"success": false, "message": "Gagal load data"};
       }
+      return {"success": false, "message": "Gagal load data"};
     } catch (e) {
       return {"success": false, "message": "Error: $e"};
-    }
-  }
-
-  static Future<Map<String, dynamic>> getSuperAdminDashboard() async {
-    try {
-      final response = await http.get(
-        Uri.parse("$baseUrl/warga/rw/dashboard"),
-        headers: {"Authorization": "Bearer $_token"},
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {"success": true, "data": data['data']};
-      } else {
-        return {"success": false, "message": "Gagal mengambil data"};
-      }
-    } catch (e) {
-      return {"success": false, "message": "Terjadi kesalahan: $e"};
     }
   }
 
@@ -395,15 +335,11 @@ static Future<Map<String, dynamic>?> getRtNotifications() async {
     try {
       final response = await http.get(
         Uri.parse("$baseUrl/warga/rw/notifications"), 
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $_token",
-        },
-      );
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['data']; 
+        return jsonDecode(response.body)['data']; 
       }
     } catch (e) {
       print("Error getRwNotifications: $e");
@@ -415,31 +351,42 @@ static Future<Map<String, dynamic>?> getRtNotifications() async {
     try {
       final response = await http.put(
         Uri.parse("$baseUrl/warga/rw/verify/$idUser"),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $_token",
-        },
-      );
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
       return response.statusCode == 200;
     } catch (e) {
       return false;
     }
   }
 
+  static Future<List<dynamic>> getStatistikPerRt() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/dashboard/stats/per-rt'),
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
+
+      final result = jsonDecode(response.body);
+      if (response.statusCode == 200 && result['success'] == true) {
+        return result['data'];
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
   // ===========================================================================
-  // 5. FITUR WARGA (PENGAJUAN)
+  // 5. FITUR WARGA (Pengajuan & Notifikasi)
   // ===========================================================================
 
   static Future<bool> ajukanPerubahan(String keterangan) async {
     try {
       final response = await http.post(
         Uri.parse("$baseUrl/warga/pengajuan"),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $_token",
-        },
+        headers: await _getHeaders(),
         body: jsonEncode({"keterangan": keterangan}),
-      );
+      ).timeout(_timeout);
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -450,12 +397,11 @@ static Future<Map<String, dynamic>?> getRtNotifications() async {
     try {
       final response = await http.get(
         Uri.parse("$baseUrl/warga/pengajuan/riwayat"),
-        headers: {"Authorization": "Bearer $_token"},
-      );
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
       
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['data'];
+        return jsonDecode(response.body)['data'];
       }
       return [];
     } catch (e) {
@@ -463,55 +409,20 @@ static Future<Map<String, dynamic>?> getRtNotifications() async {
     }
   }
 
-// ===========================================================================
-  // 6. get statistik per RT  
-  // ===========================================================================
-
-static Future<List<dynamic>> getStatistikPerRt() async {
-    // SEKARANG ERROR INI AKAN HILANG
-    final prefs = await SharedPreferences.getInstance(); 
-    final token = prefs.getString('token');
-
-    final url = Uri.parse('$baseUrl/dashboard/stats/per-rt');
-
-    final response = await http.get(
-      url,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    final result = jsonDecode(response.body);
-    if (response.statusCode == 200 && result['success'] == true) {
-      return result['data'];
-    } else {
-      throw Exception(result['message'] ?? 'Gagal mengambil data per RT');
-    }
-  }
-
-  // Notifikasi untuk Warga (Hasil Pengajuan)
   static Future<List<dynamic>> getNotifikasiWarga() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    
-    // Pastikan URL-nya sesuai route backend
-    final url = Uri.parse('$baseUrl/warga/notifikasi'); 
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/warga/notifikasi'),
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
 
-    final response = await http.get(
-      url,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    final result = jsonDecode(response.body);
-    if (response.statusCode == 200 && result['success'] == true) {
-      return result['data'];
-    } else {
-      // Jika kosong atau error, kembalikan list kosong agar tidak crash
-      return []; 
+      final result = jsonDecode(response.body);
+      if (response.statusCode == 200 && result['success'] == true) {
+        return result['data'];
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 }

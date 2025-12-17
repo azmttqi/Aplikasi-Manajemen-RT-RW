@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
-import 'StatistikPerRtScreen.dart'; // Pastikan file ini ada
-import '../../widgets/logo_widget.dart'; // Pastikan file ini ada
-import '../../utils/global_keys.dart'; // Untuk navigasi tab
+import 'StatistikPerRtScreen.dart'; 
+import '../../widgets/logo_widget.dart';
+import '../../utils/global_keys.dart'; 
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -22,7 +22,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     _fetchDashboardData();
   }
 
-  // Fungsi ambil data dari API
   Future<void> _fetchDashboardData() async {
     setState(() {
       _isLoading = true;
@@ -51,7 +50,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     }
   }
 
-  // Fungsi Navigasi saat kartu diklik
   void _onCardTap(String title) {
     if (title == 'Jumlah Warga') {
       Navigator.push(
@@ -77,7 +75,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
       // Pindah ke Tab "Data RT" (Index 1) menggunakan GlobalKey
       final state = mainScreenKey.currentState;
       if (state != null) {
-        // PERBAIKAN: Gunakan (state as dynamic) agar tidak merah
+        // Casting ke dynamic agar fungsi changeTab terdeteksi
         (state as dynamic).changeTab(1);
       }
     }
@@ -85,7 +83,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    // Warna Background Cream (Sama persis dengan RT)
     const Color backgroundColor = Color(0xFFFAF6E6); 
 
     return Scaffold(
@@ -117,14 +114,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // --- HEADER LOGO ---
                           const SizedBox(height: 20),
                           const Center(
                             child: LogoWidget(height: 120, width: 120),
                           ),
                           const SizedBox(height: 20),
 
-                          // --- TEKS SAMBUTAN ---
                           const Text(
                             'Dashboard RW',
                             style: TextStyle(
@@ -138,13 +133,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                             'Data Statistik Lingkungan RW',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Color(0xFFD36F00), // Warna oranye khas
+                              color: Color(0xFFD36F00),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(height: 25),
 
-                          // --- KARTU 1: JUMLAH WARGA (BIRU) ---
                           _buildStatCard(
                             title: 'Jumlah Warga',
                             count: _dashboardData?['total_warga']?.toString() ?? '0',
@@ -154,7 +148,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
                           const SizedBox(height: 15),
 
-                          // --- KARTU 2: JUMLAH KK (HIJAU) ---
                           _buildStatCard(
                             title: 'Jumlah Kartu Keluarga',
                             count: _dashboardData?['total_kk']?.toString() ?? '0',
@@ -164,8 +157,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
                           const SizedBox(height: 15),
 
-                          // --- KARTU 3: JUMLAH RT (ORANYE) ---
-                          // Ini spesial untuk RW
                           _buildStatCard(
                             title: 'Jumlah RT',
                             count: _dashboardData?['total_rt']?.toString() ?? '0',
@@ -173,7 +164,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                             color: Colors.orange,
                           ),
                           
-                          const SizedBox(height: 100), // Space bawah agar scroll enak
+                          const SizedBox(height: 100), 
                         ],
                       ),
                     ),
@@ -182,8 +173,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     );
   }
 
-  // --- WIDGET KARTU (Sama persis dengan Dashboard RT) ---
-  // Fungsi ini harus ada di dalam Class _SuperAdminDashboardState
   Widget _buildStatCard({
     required String title,
     required String count,
@@ -201,7 +190,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Bagian KIRI: Teks & Angka
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -217,15 +205,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   Text(
                     count,
                     style: const TextStyle(
-                      fontSize: 32, // Angka Besar
+                      fontSize: 32, 
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
                 ],
               ),
-
-              // Bagian KANAN: Icon dalam Kotak Warna Transparan
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
