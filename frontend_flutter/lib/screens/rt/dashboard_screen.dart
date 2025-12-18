@@ -102,7 +102,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const Divider(),
                       const SizedBox(height: 15),
 
-                      // VIEW UTAMA (Gaya Gender Interaktif)
+                      // VIEW 1: UTAMA (GENDER & TOTAL USIA)
                       if (currentView == "main") ...[
                         _rowInfoInteractive("Laki-laki", "${_statsData!['total_pria']}", Icons.male, Colors.blue, 
                           () => setModalState(() => currentView = "pria")),
@@ -112,17 +112,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(height: 25),
                         const Text("Kategori Usia Keseluruhan", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 13)),
                         const SizedBox(height: 15),
-                        // GRID USIA HORIZONTAL (Presisi sesuai gambar)
-                        _ageRowPrecise(_statsData!),
+                        
+                        // PERBAIKAN: Petakan 'total_lansia' ke kunci 'lansia'
+                        _ageRowPrecise({
+                          'lansia': _statsData!['total_lansia'] ?? 0,
+                          'dewasa': _statsData!['total_dewasa'] ?? 0,
+                          'remaja': _statsData!['total_remaja'] ?? 0,
+                          'anak': _statsData!['total_anak'] ?? 0,
+                        }),
                       ],
 
                       // VIEW DRILL-DOWN PRIA
                       if (currentView == "pria") ...[
                         _ageRowPrecise({
-                          'lansia': _statsData!['pria_lansia'],
-                          'dewasa': _statsData!['pria_dewasa'],
-                          'remaja': _statsData!['pria_remaja'],
-                          'anak': _statsData!['pria_anak'],
+                          'lansia': _statsData!['pria_lansia'] ?? 0,
+                          'dewasa': _statsData!['pria_dewasa'] ?? 0,
+                          'remaja': _statsData!['pria_remaja'] ?? 0,
+                          'anak': _statsData!['pria_anak'] ?? 0,
                         }),
                         const SizedBox(height: 20),
                         const Center(child: Text("*Data usia khusus warga Laki-laki", style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic))),
@@ -131,10 +137,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // VIEW DRILL-DOWN WANITA
                       if (currentView == "wanita") ...[
                         _ageRowPrecise({
-                          'lansia': _statsData!['wanita_lansia'],
-                          'dewasa': _statsData!['wanita_dewasa'],
-                          'remaja': _statsData!['wanita_remaja'],
-                          'anak': _statsData!['wanita_anak'],
+                          'lansia': _statsData!['wanita_lansia'] ?? 0,
+                          'dewasa': _statsData!['wanita_dewasa'] ?? 0,
+                          'remaja': _statsData!['wanita_remaja'] ?? 0,
+                          'anak': _statsData!['wanita_anak'] ?? 0,
                         }),
                         const SizedBox(height: 20),
                         const Center(child: Text("*Data usia khusus warga Perempuan", style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic))),

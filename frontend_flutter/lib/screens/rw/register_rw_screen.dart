@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:math'; // Import Math untuk generate kode acak
-import '../../services/api_service.dart'; // Import Service API
-import '../../widgets/logo_widget.dart'; // Import Logo Widget
+import 'dart:math'; 
+import '../../services/api_service.dart'; 
+import '../../widgets/logo_widget.dart'; 
 
 class RegisterRwScreen extends StatefulWidget {
   const RegisterRwScreen({super.key});
@@ -19,7 +19,6 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
   final _passwordController = TextEditingController();
   final _konfirmasiPasswordController = TextEditingController();
   
-  // Data Wilayah
   final _nomorRwController = TextEditingController();
   final _namaKetuaController = TextEditingController(); 
   final _alamatController = TextEditingController();
@@ -42,23 +41,18 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
     super.dispose();
   }
 
-  // --- FUNGSI GENERATE KODE UNIK ---
   void _generateCode() {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     Random rnd = Random();
-    // Membuat 5 karakter acak
     String randomStr = String.fromCharCodes(Iterable.generate(
         5, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
     
     setState(() {
-      // Format Kode: RW-[ACAK]
       _kodeUnikController.text = "RW-$randomStr";
     });
   }
 
-  // --- FUNGSI PROSES REGISTER ---
   void _handleRegister() async {
-    // 1. Validasi Password
     if (_passwordController.text != _konfirmasiPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Konfirmasi kata sandi tidak cocok!"), backgroundColor: Colors.red),
@@ -66,7 +60,6 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
       return;
     }
 
-    // 2. Validasi Kolom Kosong
     if (_namaController.text.isEmpty || 
         _emailController.text.isEmpty || 
         _nomorRwController.text.isEmpty ||
@@ -77,37 +70,27 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
       return;
     }
 
-    // Mulai Loading
     setState(() => _isLoading = true);
 
-    // 3. Panggil API Service
     final result = await ApiService.register(
       role: 'RW',
       namaLengkap: _namaController.text,
       email: _emailController.text,
-      // Buat username otomatis dari bagian depan email (misal budi@gmail.com -> budi)
       username: _emailController.text.split('@')[0], 
       password: _passwordController.text,
-      
-      // Data Wilayah RW
       nomorWilayah: _nomorRwController.text,
       alamatWilayah: _alamatController.text,
-      kodeWilayahBaru: _kodeUnikController.text, // Kode yang digenerate
+      kodeWilayahBaru: _kodeUnikController.text, 
     );
 
-    // Stop Loading
     setState(() => _isLoading = false);
 
-    // 4. Cek Hasil
     if (result['success']) {
-      // Jika Sukses
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Registrasi RW Berhasil! Silakan Login."))
       );
-      // Kembali ke halaman Login (Route paling awal)
       Navigator.popUntil(context, (route) => route.isFirst);
     } else {
-      // Jika Gagal
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result['message']), backgroundColor: Colors.red),
       );
@@ -118,6 +101,26 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBE6), // Background cream
+      
+      // --- PERUBAHAN DI SINI: MENAMBAHKAN APPBAR ---
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFFFBE6),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+        titleSpacing: 0, // Agar judul lebih dekat dengan tombol back
+        title: const Text(
+          "Pendaftaran Super Admin RW",
+          style: TextStyle(
+            fontSize: 18, 
+            fontWeight: FontWeight.bold, 
+            color: Colors.black87
+          ),
+        ),
+      ),
+
       bottomNavigationBar: Container(
         height: 50,
         color: const Color(0xFF678267),
@@ -130,24 +133,16 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 40),
-                
-                // --- 1. LOGO BARU ---
+                // Logo tetap ditampilkan namun dengan padding lebih kecil
                 _buildLogoSection(),
                 
-                const SizedBox(height: 30),
-
-                const Text(
-                  "Pendaftaran Super Admin RW & Kode Wilayah",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
 
                 // --- DATA AKUN ---
                 _buildFormCard(
@@ -175,7 +170,7 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // --- DATA WILAYAH ---
                 _buildFormCard(
@@ -197,12 +192,11 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF678267), // Sesuaikan tema hijau
+                      backgroundColor: const Color(0xFF678267), 
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                     ),
-                    // Jika Loading, tombol mati (null) agar tidak diklik 2x
                     onPressed: _isLoading ? null : _handleRegister,
                     child: _isLoading
                         ? const SizedBox(
@@ -213,8 +207,6 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                _buildLoginLink(context),
               ],
             ),
           ),
@@ -223,8 +215,7 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
     );
   }
 
-  // --- WIDGET HELPER ---
-
+  // --- WIDGET HELPER TETAP SAMA ---
   Widget _buildFormCard({required String title, required List<Widget> children}) {
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -236,7 +227,7 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           const Divider(height: 24, thickness: 1),
           ...children,
         ],
@@ -250,19 +241,20 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
       child: Row(
         children: [
           SizedBox(
-            width: 130,
-            child: Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+            width: 110, // Sedikit diperkecil agar pas di layar kecil
+            child: Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
           ),
           Expanded(
             child: TextFormField(
               controller: controller,
               obscureText: obscureText,
               keyboardType: keyboardType,
+              style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding: const EdgeInsets.all(12),
                 filled: true,
-                fillColor: Colors.grey[200],
+                fillColor: Colors.grey[100],
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide.none),
                 suffixIcon: suffixIcon,
               ),
@@ -279,18 +271,19 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
       child: Row(
         children: [
           SizedBox(
-            width: 130,
-            child: Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+            width: 110,
+            child: Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
           ),
           Expanded(
             child: TextFormField(
               controller: controller,
               readOnly: true,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding: const EdgeInsets.all(12),
                 filled: true,
-                fillColor: Colors.grey[200],
+                fillColor: Colors.grey[100],
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide.none),
               ),
             ),
@@ -298,39 +291,26 @@ class _RegisterRwScreenState extends State<RegisterRwScreen> {
           const SizedBox(width: 8),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[100],
+              backgroundColor: Colors.blue[50],
               foregroundColor: Colors.blue[800],
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
             ),
-            onPressed: _generateCode, // Memanggil fungsi generate
-            child: const Text("Generated Code"),
+            onPressed: _generateCode,
+            child: const Text("Generate"),
           )
         ],
       ),
     );
   }
 
-  // --- BAGIAN INI YANG DIGANTI ---
   Widget _buildLogoSection() {
     return const Center(
       child: LogoWidget(
-        height: 120, 
-        width: 120,
+        height: 180, 
+        width: 180,
       ),
-    );
-  }
-
-  Widget _buildLoginLink(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text("Sudah Punya akun?", style: TextStyle(color: Colors.grey[700])),
-        TextButton(
-          onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
-          child: const Text("Login", style: TextStyle(color: const Color(0xFF678267), fontWeight: FontWeight.bold)),
-        ),
-      ],
     );
   }
 }
