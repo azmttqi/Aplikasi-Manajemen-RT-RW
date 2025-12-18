@@ -89,7 +89,7 @@ export const updateWarga = async (req, res) => {
   const { id } = req.params; 
   
   const { 
-    nama_lengkap, nik, no_kk, tempat_lahir, tanggal_lahir, 
+    nama_lengkap, nik, no_kk, alamat, tempat_lahir, tanggal_lahir, 
     jenis_kelamin, agama, pekerjaan, status_perkawinan, 
     golongan_darah, kewarganegaraan, status_verifikasi 
   } = req.body;
@@ -101,19 +101,20 @@ export const updateWarga = async (req, res) => {
          nama_lengkap = COALESCE($1, nama_lengkap),
          nik = COALESCE($2, nik),
          no_kk = COALESCE($3, no_kk),
-         tempat_lahir = COALESCE($4, tempat_lahir),
-         tanggal_lahir = COALESCE($5, tanggal_lahir),
-         jenis_kelamin = COALESCE($6, jenis_kelamin),
-         agama = COALESCE($7, agama),
-         pekerjaan = COALESCE($8, pekerjaan),
-         status_perkawinan = COALESCE($9, status_perkawinan),
-         golongan_darah = COALESCE($10, golongan_darah),
-         kewarganegaraan = COALESCE($11, kewarganegaraan),
-         status_verifikasi = COALESCE($12, status_verifikasi)
-       WHERE id_warga = $13
+         alamat = COALESCE($4, alamat),
+         tempat_lahir = COALESCE($5, tempat_lahir),
+         tanggal_lahir = COALESCE($6, tanggal_lahir),
+         jenis_kelamin = COALESCE($7, jenis_kelamin),
+         agama = COALESCE($8, agama),
+         pekerjaan = COALESCE($9, pekerjaan),
+         status_perkawinan = COALESCE($10, status_perkawinan),
+         golongan_darah = COALESCE($11, golongan_darah),
+         kewarganegaraan = COALESCE($12, kewarganegaraan),
+         status_verifikasi = COALESCE($13, status_verifikasi)
+       WHERE id_warga = $14
        RETURNING *`,
       [
-        nama_lengkap, nik, no_kk, tempat_lahir, tanggal_lahir, 
+        nama_lengkap, nik, no_kk, alamat, tempat_lahir, tanggal_lahir, 
         jenis_kelamin, agama, pekerjaan, status_perkawinan, 
         golongan_darah, kewarganegaraan, status_verifikasi, 
         id // Parameter ke-13

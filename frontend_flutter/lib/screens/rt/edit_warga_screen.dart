@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
-// import 'package:intl/intl.dart'; // Pastikan tambah ini di pubspec.yaml jika belum (intl: ^0.18.0)
-// Kalau error intl, hapus import ini dan pakai string biasa dulu, tapi sebaiknya install intl.
 
 class EditWargaScreen extends StatefulWidget {
   final Map<String, dynamic> warga;
@@ -16,22 +14,22 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
 
-  // --- CONTROLLERS (Input Teks) ---
+  // --- CONTROLLERS ---
   late TextEditingController _namaController;
   late TextEditingController _nikController;
   late TextEditingController _kkController;
+  late TextEditingController _alamatController;
   late TextEditingController _tempatLahirController;
   late TextEditingController _tanggalLahirController;
   late TextEditingController _agamaController;
   late TextEditingController _pekerjaanController;
 
-  // --- DROPDOWN VARIABLES (Pilihan) ---
+  // --- DROPDOWN VARIABLES ---
   String? _selectedJenisKelamin;
   String? _selectedStatusKawin;
   String? _selectedGolDarah;
   String? _selectedKewarganegaraan;
 
-  // List Pilihan Dropdown
   final List<String> _listJK = ['Laki-laki', 'Perempuan'];
   final List<String> _listStatus = ['Belum Kawin', 'Kawin', 'Cerai Hidup', 'Cerai Mati'];
   final List<String> _listGolDarah = ['A', 'B', 'AB', 'O', '-'];
@@ -42,35 +40,47 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
     super.initState();
     final w = widget.warga;
 
-    // 1. Isi Controller Text
     _namaController = TextEditingController(text: w['nama_lengkap']);
     _nikController = TextEditingController(text: w['nik']);
     _kkController = TextEditingController(text: w['no_kk']);
+    _alamatController = TextEditingController(text: w['alamat_lengkap'] ?? w['alamat'] ?? '');
     _tempatLahirController = TextEditingController(text: w['tempat_lahir']);
     
-    // Format tanggal biar rapi (yyyy-MM-dd)
     String tgl = w['tanggal_lahir'] ?? "";
-    if (tgl.length > 10) tgl = tgl.substring(0, 10); // Ambil 10 karakter pertama
+    if (tgl.length > 10) tgl = tgl.substring(0, 10); 
     _tanggalLahirController = TextEditingController(text: tgl);
 
     _agamaController = TextEditingController(text: w['agama']);
     _pekerjaanController = TextEditingController(text: w['pekerjaan']);
 
-    // 2. Isi Variabel Dropdown (Cek apakah data database cocok dengan list pilihan)
     _selectedJenisKelamin = _validateDropdown(w['jenis_kelamin'], _listJK);
     _selectedStatusKawin = _validateDropdown(w['status_perkawinan'], _listStatus);
     _selectedGolDarah = _validateDropdown(w['golongan_darah'], _listGolDarah);
     _selectedKewarganegaraan = _validateDropdown(w['kewarganegaraan'], _listWargaNegara);
   }
 
-  // Fungsi bantu cek dropdown biar gak error kalau datanya aneh
-  String? _validateDropdown(String? value, List<String> list) {
-    if (value == null || value.isEmpty) return null;
-    if (list.contains(value)) return value;
-    return null; // Kalau data di DB tidak ada di list, biarkan kosong
+  @override
+  void dispose() {
+    _namaController.dispose();
+    _nikController.dispose();
+    _kkController.dispose();
+    _alamatController.dispose();
+    _tempatLahirController.dispose();
+    _tanggalLahirController.dispose();
+    _agamaController.dispose();
+    _pekerjaanController.dispose();
+    super.dispose();
   }
 
-  // Fungsi Pilih Tanggal
+  String? _validateDropdown(String? value, List<String> list) {
+    if (value == null || value.isEmpty) return null;
+    try {
+      return list.firstWhere((e) => e.toLowerCase() == value.toLowerCase());
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> _pickDate() async {
     DateTime? picked = await showDatePicker(
       context: context,
@@ -79,7 +89,6 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
       lastDate: DateTime.now(),
     );
     if (picked != null) {
-      // Format manual YYYY-MM-DD
       String formatted = "${picked.year}-${picked.month.toString().padLeft(2,'0')}-${picked.day.toString().padLeft(2,'0')}";
       setState(() {
         _tanggalLahirController.text = formatted;
@@ -89,18 +98,16 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
 
   Future<void> _simpanData() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isSaving = true);
 
-    // Ambil ID
     final rawId = widget.warga['id'] ?? widget.warga['id_warga'];
     final int idWarga = int.tryParse(rawId.toString()) ?? 0;
 
-    // Siapkan Data Lengkap
     Map<String, dynamic> dataUpdate = {
       "nama_lengkap": _namaController.text,
       "nik": _nikController.text,
       "no_kk": _kkController.text,
+      "alamat": _alamatController.text,
       "tempat_lahir": _tempatLahirController.text,
       "tanggal_lahir": _tanggalLahirController.text,
       "jenis_kelamin": _selectedJenisKelamin,
@@ -116,13 +123,13 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
     if (mounted) {
       setState(() => _isSaving = false);
       if (success) {
-        Navigator.pop(context, true); // Sukses kembali
+        Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Data warga berhasil disimpan! ✅"), backgroundColor: Colors.green),
+          const SnackBar(content: Text("Data warga berhasil diperbarui! ✅"), backgroundColor: Colors.green),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Gagal menyimpan data ❌"), backgroundColor: Colors.red),
+          const SnackBar(content: Text("Gagal memperbarui data ❌"), backgroundColor: Colors.red),
         );
       }
     }
@@ -130,141 +137,201 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const Color themeBg = Color(0xFFFFF8E1);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: themeBg,
       appBar: AppBar(
-        title: const Text("Edit Biodata Warga"),
+        title: const Text("Edit Biodata Warga", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: themeBg,
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // === HEADER SECTION ===
-            const Text("Data Kependudukan", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
-            const Divider(),
-            
-            _buildTextField("Nama Lengkap", _namaController),
-            const SizedBox(height: 15),
-            Row(
-              children: [
-                Expanded(child: _buildTextField("NIK", _nikController, isNumber: true)),
-                const SizedBox(width: 15),
-                Expanded(child: _buildTextField("No. KK", _kkController, isNumber: true)),
-              ],
+            const Text(
+              "Perbarui informasi kependudukan warga di bawah ini.",
+              style: TextStyle(color: Colors.grey, fontSize: 13),
             ),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 25),
-            
-            // === DATA PRIBADI SECTION ===
-            const Text("Data Pribadi", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
-            const Divider(),
+            _buildLabel("Nama Lengkap"),
+            TextFormField(
+              controller: _namaController,
+              decoration: _inputDecor("Masukkan Nama Lengkap"),
+              validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
+            ),
+            const SizedBox(height: 15),
 
             Row(
               children: [
-                Expanded(child: _buildTextField("Tempat Lahir", _tempatLahirController)),
-                const SizedBox(width: 15),
-                // DATE PICKER FIELD
                 Expanded(
-                  child: TextFormField(
-                    controller: _tanggalLahirController,
-                    readOnly: true, // Gabisa diketik, harus dipklik
-                    decoration: const InputDecoration(
-                      labelText: "Tanggal Lahir",
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.calendar_today, size: 18),
-                    ),
-                    onTap: _pickDate,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLabel("NIK"),
+                      TextFormField(
+                        controller: _nikController,
+                        keyboardType: TextInputType.number,
+                        decoration: _inputDecor("NIK"),
+                        validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLabel("No. KK"),
+                      TextFormField(
+                        controller: _kkController,
+                        keyboardType: TextInputType.number,
+                        decoration: _inputDecor("No. KK"),
+                        validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 15),
-            
-            // JENIS KELAMIN & GOL DARAH
+
+            _buildLabel("Alamat Lengkap"),
+            TextFormField(
+              controller: _alamatController,
+              maxLines: 3,
+              decoration: _inputDecor("Jalan, No. Rumah, RT/RW..."),
+              validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
+            ),
+            const SizedBox(height: 25),
+
+            const Divider(),
+            const SizedBox(height: 10),
+
             Row(
               children: [
                 Expanded(
-                  child: _buildDropdown("Jenis Kelamin", _selectedJenisKelamin, _listJK, (val) => setState(() => _selectedJenisKelamin = val)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLabel("Tempat Lahir"),
+                      TextFormField(
+                        controller: _tempatLahirController,
+                        decoration: _inputDecor("Bandung"),
+                        validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 15),
                 Expanded(
-                  child: _buildDropdown("Gol. Darah", _selectedGolDarah, _listGolDarah, (val) => setState(() => _selectedGolDarah = val)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLabel("Tanggal Lahir"),
+                      TextFormField(
+                        controller: _tanggalLahirController,
+                        readOnly: true,
+                        decoration: _inputDecor("YYYY-MM-DD").copyWith(
+                          suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                        ),
+                        onTap: _pickDate,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 15),
 
-            _buildTextField("Agama", _agamaController),
+            _buildLabel("Jenis Kelamin"),
+            DropdownButtonFormField<String>(
+              value: _selectedJenisKelamin,
+              items: _listJK.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: (val) => setState(() => _selectedJenisKelamin = val),
+              decoration: _inputDecor("Pilih Jenis Kelamin"),
+              validator: (val) => val == null ? "Wajib dipilih" : null,
+            ),
             const SizedBox(height: 15),
-            _buildDropdown("Status Perkawinan", _selectedStatusKawin, _listStatus, (val) => setState(() => _selectedStatusKawin = val)),
-            
-            const SizedBox(height: 25),
 
-            // === DATA LAINNYA SECTION ===
-            const Text("Pekerjaan & Lainnya", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
-            const Divider(),
-
-            _buildTextField("Pekerjaan", _pekerjaanController),
+            _buildLabel("Agama"),
+            TextFormField(
+              controller: _agamaController,
+              decoration: _inputDecor("Agama"),
+              validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
+            ),
             const SizedBox(height: 15),
-            _buildDropdown("Kewarganegaraan", _selectedKewarganegaraan, _listWargaNegara, (val) => setState(() => _selectedKewarganegaraan = val)),
+
+            _buildLabel("Pekerjaan"),
+            TextFormField(
+              controller: _pekerjaanController,
+              decoration: _inputDecor("Pekerjaan"),
+              validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
+            ),
+            const SizedBox(height: 15),
+
+            _buildLabel("Status Perkawinan"),
+            DropdownButtonFormField<String>(
+              value: _selectedStatusKawin,
+              items: _listStatus.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: (val) => setState(() => _selectedStatusKawin = val),
+              decoration: _inputDecor("Pilih Status"),
+            ),
+            const SizedBox(height: 15),
+
+            _buildLabel("Kewarganegaraan"),
+            DropdownButtonFormField<String>(
+              value: _selectedKewarganegaraan,
+              items: _listWargaNegara.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: (val) => setState(() => _selectedKewarganegaraan = val),
+              decoration: _inputDecor("Pilih Kewarganegaraan"),
+            ),
 
             const SizedBox(height: 40),
 
-            // === TOMBOL SIMPAN ===
             SizedBox(
+              width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _simpanData,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  backgroundColor: Colors.green,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: _isSaving 
                   ? const CircularProgressIndicator(color: Colors.white)
                   : const Text("SIMPAN PERUBAHAN", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  // Widget TextField Helper biar codingan gak panjang
-  Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false}) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-      ),
-      validator: (value) => value == null || value.isEmpty ? "$label wajib diisi" : null,
+  Widget _buildLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
     );
   }
 
-  // Widget Dropdown Helper
-  Widget _buildDropdown(String label, String? value, List<String> items, Function(String?) onChanged) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+  InputDecoration _inputDecor(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide.none,
       ),
-      items: items.map((String item) {
-        return DropdownMenuItem<String>(
-          value: item,
-          child: Text(item),
-        );
-      }).toList(),
-      onChanged: onChanged,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
     );
   }
 }

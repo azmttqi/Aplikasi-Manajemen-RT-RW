@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
-import 'edit_warga_screen.dart'; // Pastikan file edit_warga_screen.dart ada di folder yang sama
+import 'edit_warga_screen.dart'; // Pastikan file ini ada
 
 class DetailWargaScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -29,7 +29,7 @@ class _DetailWargaScreenState extends State<DetailWargaScreen> {
     final rawId = _currentData['id'] ?? _currentData['id_warga'];
     final int idWarga = int.tryParse(rawId.toString()) ?? 0;
 
-    // Panggil API verifyWargaBaru (karena endpointnya sama untuk ubah status)
+    // Panggil API verifyWargaBaru
     bool sukses = await ApiService.verifyWargaBaru(idWarga, status);
 
     setState(() => _isLoading = false);
@@ -44,7 +44,7 @@ class _DetailWargaScreenState extends State<DetailWargaScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(pesan), backgroundColor: Colors.green),
         );
-        Navigator.pop(context, true); // Refresh halaman sebelumnya (SearchScreen)
+        Navigator.pop(context, true); // Refresh halaman sebelumnya
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Gagal mengupdate status"), backgroundColor: Colors.red),
@@ -108,6 +108,9 @@ class _DetailWargaScreenState extends State<DetailWargaScreen> {
     Color statusColor = Colors.orange;
     if (status == 'DISETUJUI' || status == 'VERIFIED') statusColor = Colors.green;
     if (status == 'DITOLAK') statusColor = Colors.red;
+
+    // [Updated] Ambil alamat dengan fallback key
+    String alamat = d['alamat_lengkap'] ?? d['alamat'] ?? "-";
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8E1),
@@ -206,6 +209,10 @@ class _DetailWargaScreenState extends State<DetailWargaScreen> {
                   const Divider(height: 20),
                   _buildInfoRow("NIK", d['nik'] ?? "-"),
                   _buildInfoRow("No. KK", d['no_kk'] ?? "-"),
+                  
+                  // [BARU] Menambahkan field Alamat
+                  _buildInfoRow("Alamat", alamat), 
+
                   _buildInfoRow("Tempat Lahir", d['tempat_lahir'] ?? "-"),
                   _buildInfoRow("Tanggal Lahir", d['tanggal_lahir'] ?? "-"),
                   _buildInfoRow("Jenis Kelamin", d['jenis_kelamin'] ?? "-"),
@@ -279,19 +286,19 @@ class _DetailWargaScreenState extends State<DetailWargaScreen> {
                         onPressed: () async {
                            // Konfirmasi Dialog
                            bool confirm = await showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text("Batalkan Verifikasi?"),
-                                content: const Text("Status warga akan kembali menjadi 'Menunggu' dan warga ini akan dipindahkan kembali ke menu Notifikasi."),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
-                                  TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Ya, Kembalikan")),
-                                ],
-                              )
+                             context: context,
+                             builder: (ctx) => AlertDialog(
+                               title: const Text("Batalkan Verifikasi?"),
+                               content: const Text("Status warga akan kembali menjadi 'Menunggu' dan warga ini akan dipindahkan kembali ke menu Notifikasi."),
+                               actions: [
+                                 TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
+                                 TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Ya, Kembalikan")),
+                               ],
+                             )
                            ) ?? false;
 
                            if (confirm) {
-                              _prosesVerifikasi("pending"); // Reset status ke pending
+                             _prosesVerifikasi("pending"); // Reset status ke pending
                            }
                         },
                         icon: const Icon(Icons.restore, size: 18),
@@ -307,7 +314,7 @@ class _DetailWargaScreenState extends State<DetailWargaScreen> {
                 ),
               )
 
-            // KONDISI 3: Status Ditolak (Biasanya tidak muncul di list ini, tapi jaga-jaga)
+            // KONDISI 3: Status Ditolak
             else 
               Center(
                  child: Text("Status: $status", style: const TextStyle(color: Colors.grey)),

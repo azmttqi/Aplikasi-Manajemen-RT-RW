@@ -284,6 +284,7 @@ export const getMe = async (req, res) => {
             responseData.kewarganegaraan = dataWarga.kewarganegaraan;
             responseData.tempat_lahir = dataWarga.tempat_lahir;
             responseData.tanggal_lahir = dataWarga.tanggal_lahir;
+            responseData.alamat = dataWarga.alamat;
         }
     }
 
@@ -364,7 +365,8 @@ export const updateDataWarga = async (req, res) => {
     agama, 
     pekerjaan, 
     status_perkawinan, 
-    golongan_darah 
+    golongan_darah,
+    alamat
   } = req.body;
 
   try {
@@ -380,8 +382,9 @@ export const updateDataWarga = async (req, res) => {
         agama = COALESCE($4, agama),
         pekerjaan = COALESCE($5, pekerjaan),
         status_perkawinan = COALESCE($6, status_perkawinan),
-        golongan_darah = COALESCE($7, golongan_darah)
-      WHERE pengguna_id = $8
+        golongan_darah = COALESCE($7, golongan_darah),
+        alamat = COALESCE($8, alamat)
+      WHERE pengguna_id = $9
       RETURNING *
     `;
 
@@ -393,6 +396,7 @@ export const updateDataWarga = async (req, res) => {
       pekerjaan, 
       status_perkawinan, 
       golongan_darah, 
+      alamat,
       userId
     ]);
 

@@ -17,7 +17,7 @@ class _FormPengajuanScreenState extends State<FormPengajuanScreen> {
   // Data Lama (Placeholder, nanti bisa ambil dari API getMe)
   String _oldNama = "...";
   String _oldTgl = "...";
-  String _oldHp = "...";
+  // String _oldHp = "...";
   
   bool _isLoading = false;
 
@@ -33,7 +33,7 @@ class _FormPengajuanScreenState extends State<FormPengajuanScreen> {
       setState(() {
         _oldNama = profil['nama_lengkap'] ?? "-";
         _oldTgl = profil['tanggal_lahir'] ?? "-";
-        _oldHp = profil['no_hp'] ?? "-"; // Pastikan backend kirim no_hp jika ada
+        // _oldHp = profil['no_hp'] ?? "-"; // Pastikan backend kirim no_hp jika ada
       });
     }
   }
@@ -96,7 +96,7 @@ class _FormPengajuanScreenState extends State<FormPengajuanScreen> {
                   const SizedBox(height: 10),
                   Text("Nama Lengkap : $_oldNama"),
                   Text("Tanggal Lahir : $_oldTgl"),
-                  Text("No. Handphone : $_oldHp"),
+                  // Text("No. Handphone : $_oldHp"),
                 ],
               ),
             ),

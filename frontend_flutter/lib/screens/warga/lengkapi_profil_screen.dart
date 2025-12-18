@@ -14,20 +14,22 @@ class LengkapiProfilScreen extends StatefulWidget {
 }
 
 class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
-  // --- 1. KONFIGURASI API (Ganti IP di sini saja) ---
-  // Gunakan 10.0.2.2 jika Emulator, atau IP Laptop (misal 192.168.1.5) jika HP fisik
+  // --- 1. KONFIGURASI API ---
   final String baseUrl = "http://localhost:5000/api";
 
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = true;
-  bool _isLocked = false; // Variabel penentu apakah form dikunci
+  bool _isLocked = false; 
 
-  // Controller
+  // --- CONTROLLER ---
   final TextEditingController _nikController = TextEditingController();
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _tempatLahirController = TextEditingController();
   final TextEditingController _pekerjaanController = TextEditingController();
   final TextEditingController _tanggalLahirController = TextEditingController();
+  
+  // [BARU] Controller untuk Alamat
+  final TextEditingController _alamatController = TextEditingController(); 
 
   // Variable Dropdown
   String? _selectedGender;
@@ -46,11 +48,10 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
   @override
   void initState() {
     super.initState();
-    _checkLockStatus(); // Cek status dulu
+    _checkLockStatus();
     _fetchUserData();
   }
 
-  // --- PERBAIKAN PENTING: MEMBERSIHKAN MEMORI ---
   @override
   void dispose() {
     _nikController.dispose();
@@ -58,13 +59,13 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
     _tempatLahirController.dispose();
     _pekerjaanController.dispose();
     _tanggalLahirController.dispose();
+    _alamatController.dispose(); // [BARU] Dispose alamat
     super.dispose();
   }
 
   // --- CEK STATUS VERIFIKASI ---
   void _checkLockStatus() {
     final status = widget.statusVerifikasi.toLowerCase().trim();
-    // Jika verified/disetujui/1, maka KUNCI form
     if (status == 'verified' || status == 'disetujui' || status == '1') {
       setState(() {
         _isLocked = true;
@@ -91,10 +92,7 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
         },
       );
 
-      // Cek apakah widget masih aktif sebelum update UI
       if (!mounted) return;
-
-      print("GET Data Response: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
@@ -106,6 +104,9 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
             _namaController.text = data['nama_lengkap'] ?? '';
             _tempatLahirController.text = data['tempat_lahir'] ?? '';
             _pekerjaanController.text = data['pekerjaan'] ?? '';
+            
+            // [BARU] Ambil data alamat dari database
+            _alamatController.text = data['alamat_lengkap'] ?? data['alamat'] ?? ''; 
 
             if (data['tanggal_lahir'] != null) {
               String rawDate = data['tanggal_lahir'].toString();
@@ -134,7 +135,6 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Sesi berakhir, silakan login kembali"), backgroundColor: Colors.red),
     );
-    // Logout atau kembali ke login bisa ditangani di sini
     Navigator.pop(context);
   }
 
@@ -170,6 +170,8 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
         'jenis_kelamin': _selectedGender,
         'agama': _selectedAgama,
         'pekerjaan': _pekerjaanController.text,
+        // [BARU] Kirim alamat ke backend
+        'alamat_lengkap': _alamatController.text, 
         'status_perkawinan': _selectedStatusKawin,
         'golongan_darah': _selectedGolDarah,
         'kewarganegaraan': _selectedKewarganegaraan,
@@ -186,14 +188,12 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
         body: jsonEncode(dataKirim),
       );
 
-      // Cek apakah widget masih aktif sebelum lanjut
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Data berhasil disimpan! ✅"), backgroundColor: Colors.green),
         );
-        // PENTING: Kirim 'true' agar dashboard merefresh data
         Navigator.pop(context, true);
       } else {
         throw Exception("Gagal simpan: ${response.body}");
@@ -213,7 +213,6 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
   // --- 4. TAMPILAN UI ---
   @override
   Widget build(BuildContext context) {
-    // Tentukan warna dan status input berdasarkan _isLocked
     final inputColor = _isLocked ? Colors.grey.shade200 : Colors.white;
 
     return Scaffold(
@@ -235,7 +234,6 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- BANNER INFORMASI JIKA TERKUNCI ---
                     if (_isLocked)
                       Container(
                         margin: const EdgeInsets.only(bottom: 20),
@@ -268,7 +266,7 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
                     _buildLabel("Nama Lengkap"),
                     TextFormField(
                       controller: _namaController,
-                      enabled: !_isLocked, // Kunci jika verified
+                      enabled: !_isLocked,
                       decoration: _inputDecor("Nama Lengkap", inputColor),
                       validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
                     ),
@@ -277,7 +275,7 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
                     _buildLabel("NIK"),
                     TextFormField(
                       controller: _nikController,
-                      enabled: !_isLocked, // Kunci jika verified
+                      enabled: !_isLocked,
                       decoration: _inputDecor("Nomor Induk Kependudukan", inputColor),
                       keyboardType: TextInputType.number,
                       validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
@@ -301,7 +299,7 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
                       decoration: _inputDecor("YYYY-MM-DD", inputColor).copyWith(
                         suffixIcon: const Icon(Icons.calendar_today),
                       ),
-                      onTap: _isLocked ? null : () async { // Disable tap jika locked
+                      onTap: _isLocked ? null : () async {
                         DateTime? picked = await showDatePicker(
                           context: context,
                           initialDate: DateTime.now(),
@@ -346,6 +344,18 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
                       validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
                     ),
                     const SizedBox(height: 15),
+
+                    // --- [BARU] KOLOM ALAMAT LENGKAP ---
+                    _buildLabel("Alamat Lengkap"),
+                    TextFormField(
+                      controller: _alamatController,
+                      enabled: !_isLocked,
+                      maxLines: 3, // Membuat input menjadi text area
+                      decoration: _inputDecor("Jalan, No. Rumah, RT/RW, Blok...", inputColor),
+                      validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
+                    ),
+                    const SizedBox(height: 15),
+                    // -----------------------------------
 
                     _buildLabel("Status Perkawinan"),
                     DropdownButtonFormField<String>(
@@ -422,7 +432,7 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
       hintText: hint,
       filled: true,
       fillColor: fillColor,
-      disabledBorder: OutlineInputBorder( // Style saat disabled (locked)
+      disabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
