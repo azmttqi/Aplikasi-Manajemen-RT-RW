@@ -22,18 +22,31 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
   late TextEditingController _tempatLahirController;
   late TextEditingController _tanggalLahirController;
   late TextEditingController _agamaController;
-  late TextEditingController _pekerjaanController;
 
   // --- DROPDOWN VARIABLES ---
   String? _selectedJenisKelamin;
   String? _selectedStatusKawin;
   String? _selectedGolDarah;
   String? _selectedKewarganegaraan;
+  String? _selectedPekerjaan; // [BARU] Mengganti controller pekerjaan
 
+  // --- LIST PILIHAN ---
   final List<String> _listJK = ['Laki-laki', 'Perempuan'];
   final List<String> _listStatus = ['Belum Kawin', 'Kawin', 'Cerai Hidup', 'Cerai Mati'];
   final List<String> _listGolDarah = ['A', 'B', 'AB', 'O', '-'];
   final List<String> _listWargaNegara = ['WNI', 'WNA'];
+  
+  // [BARU] Daftar Pekerjaan Tetap
+  final List<String> _pekerjaanList = [
+    'PNS / TNI / POLRI',
+    'Karyawan Swasta',
+    'Wiraswasta',
+    'Buruh Harian Lepas',
+    'Pelajar / Mahasiswa',
+    'Ibu Rumah Tangga',
+    'Tidak / Belum Bekerja',
+    'Lainnya'
+  ];
 
   @override
   void initState() {
@@ -45,18 +58,18 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
     _kkController = TextEditingController(text: w['no_kk']);
     _alamatController = TextEditingController(text: w['alamat_lengkap'] ?? w['alamat'] ?? '');
     _tempatLahirController = TextEditingController(text: w['tempat_lahir']);
+    _agamaController = TextEditingController(text: w['agama']);
     
     String tgl = w['tanggal_lahir'] ?? "";
     if (tgl.length > 10) tgl = tgl.substring(0, 10); 
     _tanggalLahirController = TextEditingController(text: tgl);
 
-    _agamaController = TextEditingController(text: w['agama']);
-    _pekerjaanController = TextEditingController(text: w['pekerjaan']);
-
+    // Inisialisasi Dropdown
     _selectedJenisKelamin = _validateDropdown(w['jenis_kelamin'], _listJK);
     _selectedStatusKawin = _validateDropdown(w['status_perkawinan'], _listStatus);
     _selectedGolDarah = _validateDropdown(w['golongan_darah'], _listGolDarah);
     _selectedKewarganegaraan = _validateDropdown(w['kewarganegaraan'], _listWargaNegara);
+    _selectedPekerjaan = _validateDropdown(w['pekerjaan'], _pekerjaanList); // [BARU]
   }
 
   @override
@@ -68,7 +81,6 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
     _tempatLahirController.dispose();
     _tanggalLahirController.dispose();
     _agamaController.dispose();
-    _pekerjaanController.dispose();
     super.dispose();
   }
 
@@ -107,12 +119,12 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
       "nama_lengkap": _namaController.text,
       "nik": _nikController.text,
       "no_kk": _kkController.text,
-      "alamat": _alamatController.text,
+      "alamat": _alamatController.text, // Key 'alamat' sesuai backend
       "tempat_lahir": _tempatLahirController.text,
       "tanggal_lahir": _tanggalLahirController.text,
       "jenis_kelamin": _selectedJenisKelamin,
       "agama": _agamaController.text,
-      "pekerjaan": _pekerjaanController.text,
+      "pekerjaan": _selectedPekerjaan, // Diambil dari pilihan dropdown
       "status_perkawinan": _selectedStatusKawin,
       "golongan_darah": _selectedGolDarah,
       "kewarganegaraan": _selectedKewarganegaraan,
@@ -249,13 +261,28 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
             ),
             const SizedBox(height: 15),
 
-            _buildLabel("Jenis Kelamin"),
-            DropdownButtonFormField<String>(
-              value: _selectedJenisKelamin,
-              items: _listJK.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-              onChanged: (val) => setState(() => _selectedJenisKelamin = val),
-              decoration: _inputDecor("Pilih Jenis Kelamin"),
-              validator: (val) => val == null ? "Wajib dipilih" : null,
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLabel("Jenis Kelamin"),
+                      _buildDropdown(_selectedJenisKelamin, _listJK, (val) => setState(() => _selectedJenisKelamin = val)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLabel("Gol. Darah"),
+                      _buildDropdown(_selectedGolDarah, _listGolDarah, (val) => setState(() => _selectedGolDarah = val)),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 15),
 
@@ -268,29 +295,15 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
             const SizedBox(height: 15),
 
             _buildLabel("Pekerjaan"),
-            TextFormField(
-              controller: _pekerjaanController,
-              decoration: _inputDecor("Pekerjaan"),
-              validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
-            ),
+            _buildDropdown(_selectedPekerjaan, _pekerjaanList, (val) => setState(() => _selectedPekerjaan = val)),
             const SizedBox(height: 15),
 
             _buildLabel("Status Perkawinan"),
-            DropdownButtonFormField<String>(
-              value: _selectedStatusKawin,
-              items: _listStatus.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-              onChanged: (val) => setState(() => _selectedStatusKawin = val),
-              decoration: _inputDecor("Pilih Status"),
-            ),
+            _buildDropdown(_selectedStatusKawin, _listStatus, (val) => setState(() => _selectedStatusKawin = val)),
             const SizedBox(height: 15),
 
             _buildLabel("Kewarganegaraan"),
-            DropdownButtonFormField<String>(
-              value: _selectedKewarganegaraan,
-              items: _listWargaNegara.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-              onChanged: (val) => setState(() => _selectedKewarganegaraan = val),
-              decoration: _inputDecor("Pilih Kewarganegaraan"),
-            ),
+            _buildDropdown(_selectedKewarganegaraan, _listWargaNegara, (val) => setState(() => _selectedKewarganegaraan = val)),
 
             const SizedBox(height: 40),
 
@@ -315,6 +328,7 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
     );
   }
 
+  // --- HELPER WIDGETS ---
   Widget _buildLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -332,6 +346,16 @@ class _EditWargaScreenState extends State<EditWargaScreen> {
         borderSide: BorderSide.none,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+    );
+  }
+
+  Widget _buildDropdown(String? value, List<String> items, Function(String?) onChanged) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
+      onChanged: onChanged,
+      decoration: _inputDecor("Pilih Opsi"),
+      validator: (val) => val == null ? "Wajib dipilih" : null,
     );
   }
 }

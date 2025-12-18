@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LengkapiProfilScreen extends StatefulWidget {
-  // Menerima status dari Dashboard untuk logika penguncian
   final String statusVerifikasi;
 
   const LengkapiProfilScreen({super.key, this.statusVerifikasi = "pending"});
@@ -14,7 +13,6 @@ class LengkapiProfilScreen extends StatefulWidget {
 }
 
 class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
-  // --- 1. KONFIGURASI API ---
   final String baseUrl = "http://localhost:5000/api";
 
   final _formKey = GlobalKey<FormState>();
@@ -25,25 +23,35 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
   final TextEditingController _nikController = TextEditingController();
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _tempatLahirController = TextEditingController();
-  final TextEditingController _pekerjaanController = TextEditingController();
   final TextEditingController _tanggalLahirController = TextEditingController();
-  
-  // [BARU] Controller untuk Alamat
   final TextEditingController _alamatController = TextEditingController(); 
 
-  // Variable Dropdown
+  // --- VARIABLE DROPDOWN ---
   String? _selectedGender;
   String? _selectedAgama;
   String? _selectedStatusKawin;
   String? _selectedGolDarah;
   String? _selectedKewarganegaraan;
+  String? _selectedPekerjaan; // [BARU] Mengganti controller teks
 
-  // List Data
+  // --- LIST DATA ---
   final List<String> _genderList = ["Laki-laki", "Perempuan"];
   final List<String> _agamaList = ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu"];
   final List<String> _statusList = ["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"];
   final List<String> _darahList = ["A", "B", "AB", "O", "-"];
   final List<String> _wniList = ["WNI", "WNA"];
+  
+  // [BARU] Daftar Pekerjaan Tetap
+  final List<String> _pekerjaanList = [
+    'PNS / TNI / POLRI',
+    'Karyawan Swasta',
+    'Wiraswasta',
+    'Buruh Harian Lepas',
+    'Pelajar / Mahasiswa',
+    'Ibu Rumah Tangga',
+    'Tidak / Belum Bekerja',
+    'Lainnya'
+  ];
 
   @override
   void initState() {
@@ -57,13 +65,11 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
     _nikController.dispose();
     _namaController.dispose();
     _tempatLahirController.dispose();
-    _pekerjaanController.dispose();
     _tanggalLahirController.dispose();
-    _alamatController.dispose(); // [BARU] Dispose alamat
+    _alamatController.dispose(); 
     super.dispose();
   }
 
-  // --- CEK STATUS VERIFIKASI ---
   void _checkLockStatus() {
     final status = widget.statusVerifikasi.toLowerCase().trim();
     if (status == 'verified' || status == 'disetujui' || status == '1') {
@@ -73,7 +79,6 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
     }
   }
 
-  // --- 2. FUNGSI AMBIL DATA (GET /me) ---
   Future<void> _fetchUserData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -103,9 +108,6 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
             _nikController.text = data['nik'] ?? '';
             _namaController.text = data['nama_lengkap'] ?? '';
             _tempatLahirController.text = data['tempat_lahir'] ?? '';
-            _pekerjaanController.text = data['pekerjaan'] ?? '';
-            
-            // [BARU] Ambil data alamat dari database
             _alamatController.text = data['alamat_lengkap'] ?? data['alamat'] ?? ''; 
 
             if (data['tanggal_lahir'] != null) {
@@ -113,11 +115,13 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
               _tanggalLahirController.text = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
             }
 
+            // Validasi Dropdown
             _selectedGender = _validateDropdown(data['jenis_kelamin'], _genderList);
             _selectedAgama = _validateDropdown(data['agama'], _agamaList);
             _selectedStatusKawin = _validateDropdown(data['status_perkawinan'], _statusList);
             _selectedGolDarah = _validateDropdown(data['golongan_darah'], _darahList);
             _selectedKewarganegaraan = _validateDropdown(data['kewarganegaraan'], _wniList);
+            _selectedPekerjaan = _validateDropdown(data['pekerjaan'], _pekerjaanList); // [BARU]
           });
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
@@ -147,7 +151,6 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
     }
   }
 
-  // --- 3. FUNGSI SUBMIT (PUT /update-data) ---
   Future<void> _submitData() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -169,15 +172,12 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
         'tanggal_lahir': _tanggalLahirController.text,
         'jenis_kelamin': _selectedGender,
         'agama': _selectedAgama,
-        'pekerjaan': _pekerjaanController.text,
-        // [BARU] Kirim alamat ke backend
+        'pekerjaan': _selectedPekerjaan, // [UBAH] Mengirim dari variabel dropdown
         'alamat_lengkap': _alamatController.text, 
         'status_perkawinan': _selectedStatusKawin,
         'golongan_darah': _selectedGolDarah,
         'kewarganegaraan': _selectedKewarganegaraan,
       };
-
-      print("Mengirim Data: $dataKirim");
 
       final response = await http.put(
         Uri.parse('$baseUrl/warga/update-data'),
@@ -199,7 +199,6 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
         throw Exception("Gagal simpan: ${response.body}");
       }
     } catch (e) {
-      print("Error Submit: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Gagal menyimpan data: $e"), backgroundColor: Colors.red),
@@ -210,7 +209,6 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
     }
   }
 
-  // --- 4. TAMPILAN UI ---
   @override
   Widget build(BuildContext context) {
     final inputColor = _isLocked ? Colors.grey.shade200 : Colors.white;
@@ -317,76 +315,41 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
                     const SizedBox(height: 15),
 
                     _buildLabel("Jenis Kelamin"),
-                    DropdownButtonFormField<String>(
-                      value: _selectedGender,
-                      items: _genderList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: _isLocked ? null : (val) => setState(() => _selectedGender = val),
-                      decoration: _inputDecor("Pilih Jenis Kelamin", inputColor),
-                      validator: (val) => val == null ? "Wajib dipilih" : null,
-                    ),
+                    _buildDropdown(_selectedGender, _genderList, (val) => setState(() => _selectedGender = val), inputColor),
                     const SizedBox(height: 15),
 
                     _buildLabel("Agama"),
-                    DropdownButtonFormField<String>(
-                      value: _selectedAgama,
-                      items: _agamaList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: _isLocked ? null : (val) => setState(() => _selectedAgama = val),
-                      decoration: _inputDecor("Pilih Agama", inputColor),
-                      validator: (val) => val == null ? "Wajib dipilih" : null,
-                    ),
+                    _buildDropdown(_selectedAgama, _agamaList, (val) => setState(() => _selectedAgama = val), inputColor),
                     const SizedBox(height: 15),
 
+                    // --- [BARU] DROPDOWN PEKERJAAN ---
                     _buildLabel("Pekerjaan"),
-                    TextFormField(
-                      controller: _pekerjaanController,
-                      enabled: !_isLocked,
-                      decoration: _inputDecor("Contoh: Karyawan Swasta", inputColor),
-                      validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
-                    ),
+                    _buildDropdown(_selectedPekerjaan, _pekerjaanList, (val) => setState(() => _selectedPekerjaan = val), inputColor),
                     const SizedBox(height: 15),
 
-                    // --- [BARU] KOLOM ALAMAT LENGKAP ---
                     _buildLabel("Alamat Lengkap"),
                     TextFormField(
                       controller: _alamatController,
                       enabled: !_isLocked,
-                      maxLines: 3, // Membuat input menjadi text area
+                      maxLines: 3,
                       decoration: _inputDecor("Jalan, No. Rumah, RT/RW, Blok...", inputColor),
                       validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
                     ),
                     const SizedBox(height: 15),
-                    // -----------------------------------
 
                     _buildLabel("Status Perkawinan"),
-                    DropdownButtonFormField<String>(
-                      value: _selectedStatusKawin,
-                      items: _statusList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: _isLocked ? null : (val) => setState(() => _selectedStatusKawin = val),
-                      decoration: _inputDecor("Pilih Status", inputColor),
-                      validator: (val) => val == null ? "Wajib dipilih" : null,
-                    ),
+                    _buildDropdown(_selectedStatusKawin, _statusList, (val) => setState(() => _selectedStatusKawin = val), inputColor),
                     const SizedBox(height: 15),
 
                     _buildLabel("Golongan Darah (Opsional)"),
-                    DropdownButtonFormField<String>(
-                      value: _selectedGolDarah,
-                      items: _darahList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: _isLocked ? null : (val) => setState(() => _selectedGolDarah = val),
-                      decoration: _inputDecor("Pilih Golongan Darah", inputColor),
-                    ),
+                    _buildDropdown(_selectedGolDarah, _darahList, (val) => setState(() => _selectedGolDarah = val), inputColor),
                     const SizedBox(height: 15),
 
                     _buildLabel("Kewarganegaraan"),
-                    DropdownButtonFormField<String>(
-                      value: _selectedKewarganegaraan,
-                      items: _wniList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: _isLocked ? null : (val) => setState(() => _selectedKewarganegaraan = val),
-                      decoration: _inputDecor("Pilih Kewarganegaraan", inputColor),
-                    ),
+                    _buildDropdown(_selectedKewarganegaraan, _wniList, (val) => setState(() => _selectedKewarganegaraan = val), inputColor),
 
                     const SizedBox(height: 30),
 
-                    // TOMBOL SIMPAN
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -420,6 +383,7 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
     );
   }
 
+  // --- HELPER WIDGETS ---
   Widget _buildLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -441,6 +405,16 @@ class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
         borderSide: BorderSide.none,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+    );
+  }
+
+  Widget _buildDropdown(String? value, List<String> items, Function(String?) onChanged, Color fillColor) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+      onChanged: _isLocked ? null : onChanged,
+      decoration: _inputDecor("Pilih Opsi", fillColor),
+      validator: (val) => val == null ? "Wajib dipilih" : null,
     );
   }
 }
