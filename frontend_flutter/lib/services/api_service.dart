@@ -212,10 +212,13 @@ class ApiService {
   // 3. FITUR RT (Manajemen Warga)
   // ===========================================================================
 
-  static Future<List<dynamic>> getWargaList({String query = ""}) async {
+static Future<List<dynamic>> getWargaList({String query = "", String ageGroup = ""}) async {
     try {
+      // Menambahkan age_group ke URL parameter
+      final url = Uri.parse("$baseUrl/warga?search=$query&age_group=$ageGroup");
+      
       final response = await http.get(
-        Uri.parse("$baseUrl/warga?search=$query"),
+        url,
         headers: await _getHeaders(),
       ).timeout(_timeout);
 
@@ -224,6 +227,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
+      print("Error getWargaList: $e");
       return []; 
     }
   }
@@ -308,6 +312,25 @@ class ApiService {
       return response.statusCode == 200;
     } catch (e) {
       return false;
+    }
+  }
+
+// [BARU] Mengambil Statistik Detail RT (Gender & Usia Otomatis)
+  static Future<Map<String, dynamic>?> getStatistikWargaRT() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/warga/statistik/rt"),
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data']; // Mengambil object data (total_pria, total_lansia, dll)
+      }
+      return null;
+    } catch (e) {
+      print("Error getStatistikWargaRT: $e");
+      return null;
     }
   }
 
@@ -423,6 +446,39 @@ class ApiService {
       return [];
     } catch (e) {
       return [];
+    }
+  }
+  // [BARU] Mengambil Statistik Detail RW (Lintas RT)
+  static Future<Map<String, dynamic>?> getStatistikWargaRWDetail() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/warga/rw/statistik/detail"),
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'];
+      }
+      return null;
+    } catch (e) {
+      print("Error getStatistikWargaRW: $e");
+      return null;
+    }
+  }
+    static Future<Map<String, dynamic>?> getStatistikRWLengkap() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/warga/rw/statistik/rincian"),
+        headers: await _getHeaders(),
+      ).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body); // Mengembalikan {summary: ..., rt_list: ...}
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 }

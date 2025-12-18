@@ -4,7 +4,9 @@ import {
     getDataDiri, updateDataDiri, 
     getDataList, addWarga, ajukanPerubahan, getRiwayatSaya, getNotifikasiWarga,
     getPendingWargaForRT, verifikasiWarga, updateWarga, deleteWarga, getDaftarPengajuanRT, verifikasiPengajuan, getRejectedWargaForRT,
+    getStatistikWargaRT,
     getAllWargaByRW, getStatistikWargaByRW, getDashboardRW, getNotificationsRW, verifikasiAkun,
+    getStatistikWargaRWDetail,
 } from "../controllers/wargaController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { ensureRoleRT, ensureRoleRW } from "../middleware/roleMiddleware.js";
@@ -35,6 +37,7 @@ router.get("/notifikasi", verifyToken, getNotifikasiWarga);
 // =================================================================
 // 🟠 KHUSUS RT
 // =================================================================
+router.get("/statistik/rt", verifyToken, ensureRoleRT, getStatistikWargaRT);
 router.get("/pending", verifyToken, ensureRoleRT, getPendingWargaForRT);
 router.put("/verify/:id_warga", verifyToken, ensureRoleRT, verifikasiWarga);
 router.get("/pengajuan/rt", verifyToken, getDaftarPengajuanRT);
@@ -50,6 +53,8 @@ router.delete("/:id", verifyToken, ensureRoleRT, deleteWarga);
 // =================================================================
 // 🔵 KHUSUS RW
 // =================================================================
+router.get("/rw/statistik/detail", verifyToken, ensureRoleRW, getStatistikWargaRWDetail);
+router.get("/rw/statistik/rincian", verifyToken, ensureRoleRW, getStatistikWargaRWDetail);
 router.get("/rw/warga", verifyToken, ensureRoleRW, getAllWargaByRW);
 router.get("/rw/statistik", verifyToken, ensureRoleRW, getStatistikWargaByRW);
 router.get("/rw/dashboard", verifyToken, ensureRoleRW, getDashboardRW);

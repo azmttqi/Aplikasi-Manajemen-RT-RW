@@ -5,20 +5,14 @@ import pool from "../config/db.js";
    ➕ TAMBAH WARGA (VERSI FIX & DEBUG)
 ============================================================ */
 export const addWarga = async (req, res) => {
-  // 1. Debugging: Cek data apa yang dikirim Frontend
   console.log("🔥 [DEBUG] Request Body:", req.body);
-  console.log("👤 [DEBUG] User Login:", req.user);
-
-  let { nama_lengkap, nik, no_kk, id_rt } = req.body;
+  
+  // Tambahkan 'alamat' di destructuring body
+  let { nama_lengkap, nik, no_kk, id_rt, alamat } = req.body;
 
   try {
-    // 2. LOGIKA OTOMATIS: Jika id_rt kosong, ambil dari user yang login (RT)
     if (!id_rt) {
-      console.log("⚠️ id_rt tidak dikirim frontend, mencoba ambil dari User Login...");
-      
       const userId = req.user.id_pengguna;
-      
-      // Cari RT ID berdasarkan user login
       const rtCheck = await pool.query(
         "SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1", 
         [userId]
@@ -26,25 +20,20 @@ export const addWarga = async (req, res) => {
 
       if (rtCheck.rows.length > 0) {
         id_rt = rtCheck.rows[0].id_rt;
-        console.log("✅ Berhasil mendeteksi id_rt otomatis:", id_rt);
       } else {
-        // Jika user bukan RT dan tidak kirim id_rt, maka error
-        console.error("❌ User bukan Ketua RT dan tidak mengirim id_rt manual.");
         return res.status(400).json({ 
-            message: "Gagal: id_rt tidak ditemukan. Pastikan Anda login sebagai RT atau kirim id_rt." 
+            message: "Gagal: id_rt tidak ditemukan." 
         });
       }
     }
 
-    // 3. Eksekusi Simpan ke Database
+    // Tambahkan kolom 'alamat' ke dalam query INSERT
     const result = await pool.query(
-      `INSERT INTO warga (nama_lengkap, nik, no_kk, id_rt, status_verifikasi)
-       VALUES ($1, $2, $3, $4, 'pending')
+      `INSERT INTO warga (nama_lengkap, nik, no_kk, id_rt, status_verifikasi, alamat)
+       VALUES ($1, $2, $3, $4, 'pending', $5)
        RETURNING *`,
-      [nama_lengkap, nik, no_kk, id_rt]
+      [nama_lengkap, nik, no_kk, id_rt, alamat] // Alamat jadi parameter ke-5
     );
-
-    console.log("✅ Sukses simpan ke DB:", result.rows[0]);
 
     res.status(201).json({
       message: "✅ Data warga berhasil ditambahkan",
@@ -52,13 +41,10 @@ export const addWarga = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ Gagal menambahkan warga (SQL Error):", err.message);
-    
-    // Cek error spesifik (misal NIK duplikat)
-    if (err.code === '23505') { // Kode error Postgres untuk Unique Constraint
-        return res.status(400).json({ message: "Gagal: NIK sudah terdaftar sebelumnya." });
+    console.error("❌ Gagal menambahkan warga:", err.message);
+    if (err.code === '23505') {
+        return res.status(400).json({ message: "Gagal: NIK sudah terdaftar." });
     }
-
     res.status(500).json({ message: "Gagal menambahkan warga", error: err.message });
   }
 };
@@ -332,15 +318,12 @@ export const getDashboardRW = async (req, res) => {
 };
 
 /* ============================================================
-   🔍 GET DATA LIST (FIX: Ambil w.* agar data detail ikut terkirim)
-============================================================ */
-/* ============================================================
    🔍 GET DATA LIST (FIX: RW AMBIL LIST RT, RT AMBIL LIST WARGA)
 ============================================================ */
 export const getDataList = async (req, res) => {
   try {
     const userId = req.user.id_pengguna; 
-    const { search } = req.query; 
+    const { search, age_group } = req.query; 
     
     let query = ""; 
     let params = [];
@@ -349,54 +332,51 @@ export const getDataList = async (req, res) => {
     const rwCheck = await pool.query("SELECT id_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
     
     if (rwCheck.rows.length > 0) {
-      // === LOGIKA RW: AMBIL DAFTAR AKUN RT ===
       const idRw = rwCheck.rows[0].id_rw;
       params.push(idRw); // $1
 
-      // Kita ambil data RT dan User-nya (Join tabel wilayah_rt dengan pengguna)
       query = `
-        SELECT 
-          rt.id_rt,
-          rt.nomor_rt,
-          rt.kode_rt,
-          u.id_pengguna,
-          u.username as nama_ketua_rt,
-          u.email,
-          u.status_verifikasi_id
+        SELECT rt.id_rt, rt.nomor_rt, rt.kode_rt, u.id_pengguna, u.username as nama_ketua_rt, u.email, u.status_verifikasi_id
         FROM wilayah_rt rt
         LEFT JOIN pengguna u ON rt.id_pengguna = u.id_pengguna
         WHERE rt.id_rw = $1
       `;
 
-      // Filter Pencarian (Cari Nomor RT atau Nama Ketua)
       if (search) {
         query += ` AND (rt.nomor_rt ILIKE $2 OR u.username ILIKE $2)`;
         params.push(`%${search}%`);
       }
-
       query += " ORDER BY rt.nomor_rt ASC";
     } 
-    
-    // 2. Cek Apakah user ini RT?
     else {
+      // 2. LOGIKA UNTUK RT
       const rtCheck = await pool.query("SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
       
       if (rtCheck.rows.length > 0) {
-        // === LOGIKA RT: AMBIL DAFTAR WARGA ===
         const idRt = rtCheck.rows[0].id_rt;
         params.push(idRt); // $1
         
+        // Kita hitung USIA secara otomatis di sini (EXTRACT YEAR FROM AGE)
         query = `
-          SELECT 
-            w.*, 
-            w.id_warga AS id
+          SELECT w.*, w.id_warga AS id
           FROM warga w
           WHERE w.id_rt = $1 
           AND w.status_verifikasi ILIKE 'disetujui'
         `;
+        
+        // FILTER OTOMATIS BERDASARKAN TANGGAL LAHIR
+        if (age_group === 'lansia') {
+          query += " AND EXTRACT(YEAR FROM AGE(w.tanggal_lahir)) >= 60";
+        } else if (age_group === 'dewasa') {
+          query += " AND EXTRACT(YEAR FROM AGE(w.tanggal_lahir)) BETWEEN 19 AND 59";
+        } else if (age_group === 'remaja') {
+          query += " AND EXTRACT(YEAR FROM AGE(w.tanggal_lahir)) BETWEEN 12 AND 18";
+        } else if (age_group === 'anak') {
+          query += " AND EXTRACT(YEAR FROM AGE(w.tanggal_lahir)) < 12";
+        }
 
         if (search) {
-          query += ` AND w.nama_lengkap ILIKE $2`;
+          query += ` AND w.nama_lengkap ILIKE $${params.length + 1}`;
           params.push(`%${search}%`); 
         }
 
@@ -407,14 +387,8 @@ export const getDataList = async (req, res) => {
       }
     }
 
-    // Eksekusi Query
     const result = await pool.query(query, params);
-
-    res.json({
-      success: true,
-      role: rwCheck.rows.length > 0 ? 'RW' : 'RT', // Beritahu frontend siapa yang login
-      data: result.rows
-    });
+    res.json({ success: true, data: result.rows });
 
   } catch (err) {
     console.error("Search Error:", err.message);
@@ -859,3 +833,98 @@ export const getNotifikasiWarga = async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil notifikasi" });
   }
 };
+export const getStatistikWargaRT = async (req, res) => {
+    try {
+        const userId = req.user.id_pengguna;
+        const rtRes = await pool.query("SELECT id_rt FROM wilayah_rt WHERE id_pengguna = $1", [userId]);
+        const id_rt = rtRes.rows[0].id_rt;
+
+        const query = `
+          SELECT 
+            -- HITUNG TOTAL WARGA YANG SUDAH DISETUJUI SAJA
+            COUNT(*) as total_warga_riil, 
+            COUNT(DISTINCT no_kk) FILTER (WHERE no_kk IS NOT NULL AND no_kk != '') as total_kk,
+            
+            -- HITUNG GENDER (Hanya dari warga yang sudah disetujui)
+            COUNT(*) FILTER (WHERE jenis_kelamin = 'Laki-laki') as total_pria,
+            COUNT(*) FILTER (WHERE jenis_kelamin = 'Perempuan') as total_wanita,
+            
+            -- HITUNG USIA (Hanya dari warga yang sudah disetujui)
+            COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM AGE(tanggal_lahir)) >= 60) as total_lansia,
+            COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM AGE(tanggal_lahir)) BETWEEN 19 AND 59) as total_dewasa,
+            COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM AGE(tanggal_lahir)) BETWEEN 12 AND 18) as total_remaja,
+            COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM AGE(tanggal_lahir)) < 12) as total_anak,
+
+            -- Drill-down Pria & Wanita (tetap seperti sebelumnya)
+            COUNT(*) FILTER (WHERE jenis_kelamin = 'Laki-laki' AND EXTRACT(YEAR FROM AGE(tanggal_lahir)) >= 60) as pria_lansia,
+            COUNT(*) FILTER (WHERE jenis_kelamin = 'Laki-laki' AND EXTRACT(YEAR FROM AGE(tanggal_lahir)) BETWEEN 19 AND 59) as pria_dewasa,
+            COUNT(*) FILTER (WHERE jenis_kelamin = 'Laki-laki' AND EXTRACT(YEAR FROM AGE(tanggal_lahir)) BETWEEN 12 AND 18) as pria_remaja,
+            COUNT(*) FILTER (WHERE jenis_kelamin = 'Laki-laki' AND EXTRACT(YEAR FROM AGE(tanggal_lahir)) < 12) as pria_anak,
+            COUNT(*) FILTER (WHERE jenis_kelamin = 'Perempuan' AND EXTRACT(YEAR FROM AGE(tanggal_lahir)) >= 60) as wanita_lansia,
+            COUNT(*) FILTER (WHERE jenis_kelamin = 'Perempuan' AND EXTRACT(YEAR FROM AGE(tanggal_lahir)) BETWEEN 19 AND 59) as wanita_dewasa,
+            COUNT(*) FILTER (WHERE jenis_kelamin = 'Perempuan' AND EXTRACT(YEAR FROM AGE(tanggal_lahir)) BETWEEN 12 AND 18) as wanita_remaja,
+            COUNT(*) FILTER (WHERE jenis_kelamin = 'Perempuan' AND EXTRACT(YEAR FROM AGE(tanggal_lahir)) < 12) as wanita_anak
+          FROM warga 
+          WHERE id_rt = $1 AND status_verifikasi = 'disetujui' -- KUNCI SINKRONISASI
+        `;
+
+        const result = await pool.query(query, [id_rt]);
+        res.json({ success: true, data: result.rows[0] });
+
+    } catch (err) {
+        res.status(500).json({ message: "Gagal mengambil statistik" });
+    }
+};
+
+/* ============================================================
+    📊 GET STATISTIK WARGA DETAIL (POV RW)
+============================================================ */
+export const getStatistikWargaRWDetail = async (req, res) => {
+    try {
+        const userId = req.user.id_pengguna;
+        const rwRes = await pool.query("SELECT id_rw FROM wilayah_rw WHERE id_pengguna = $1", [userId]);
+        if (rwRes.rowCount === 0) return res.status(403).json({ message: "Bukan Pengurus RW" });
+        const id_rw = rwRes.rows[0].id_rw;
+
+        // 1. Ringkasan Total Se-RW (Hanya yang disetujui)
+        const summaryQuery = `
+            SELECT 
+                COUNT(*) as total_warga,
+                COUNT(DISTINCT no_kk) FILTER (WHERE no_kk IS NOT NULL AND no_kk != '') as total_kk,
+                COUNT(*) FILTER (WHERE jenis_kelamin = 'Laki-laki') as pria,
+                COUNT(*) FILTER (WHERE jenis_kelamin = 'Perempuan') as wanita,
+                COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM AGE(tanggal_lahir)) >= 60) as lansia,
+                COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM AGE(tanggal_lahir)) BETWEEN 19 AND 59) as dewasa,
+                COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM AGE(tanggal_lahir)) BETWEEN 12 AND 18) as remaja,
+                COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM AGE(tanggal_lahir)) < 12) as anak
+            FROM warga w
+            JOIN wilayah_rt rt ON w.id_rt = rt.id_rt
+            WHERE rt.id_rw = $1 AND w.status_verifikasi = 'disetujui'
+        `;
+        const summary = await pool.query(summaryQuery, [id_rw]);
+
+        // 2. Rincian Per RT
+        const rtListQuery = `
+            SELECT 
+                rt.id_rt, rt.nomor_rt,
+                COUNT(w.id_warga) as total_warga,
+                COUNT(DISTINCT w.no_kk) FILTER (WHERE w.no_kk IS NOT NULL AND w.no_kk != '') as total_kk,
+                COUNT(w.id_warga) FILTER (WHERE w.jenis_kelamin = 'Laki-laki') as pria,
+                COUNT(w.id_warga) FILTER (WHERE w.jenis_kelamin = 'Perempuan') as wanita,
+                COUNT(w.id_warga) FILTER (WHERE EXTRACT(YEAR FROM AGE(w.tanggal_lahir)) >= 60) as lansia,
+                COUNT(w.id_warga) FILTER (WHERE EXTRACT(YEAR FROM AGE(w.tanggal_lahir)) BETWEEN 19 AND 59) as dewasa,
+                COUNT(w.id_warga) FILTER (WHERE EXTRACT(YEAR FROM AGE(w.tanggal_lahir)) BETWEEN 12 AND 18) as remaja,
+                COUNT(w.id_warga) FILTER (WHERE EXTRACT(YEAR FROM AGE(w.tanggal_lahir)) < 12) as anak
+            FROM wilayah_rt rt
+            LEFT JOIN warga w ON rt.id_rt = w.id_rt AND w.status_verifikasi = 'disetujui'
+            WHERE rt.id_rw = $1
+            GROUP BY rt.id_rt, rt.nomor_rt
+            ORDER BY rt.nomor_rt ASC
+        `;
+        const rtList = await pool.query(rtListQuery, [id_rw]);
+
+        res.json({ success: true, summary: summary.rows[0], rt_list: rtList.rows });
+    } catch (err) {
+        res.status(500).json({ message: "Gagal mengambil data" });
+    }
+};  

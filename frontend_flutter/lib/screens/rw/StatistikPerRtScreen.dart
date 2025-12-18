@@ -2,14 +2,10 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 
 class StatistikPerRtScreen extends StatefulWidget {
-  final String title;     // Judul Halaman (misal: "Sebaran Warga per RT")
-  final String dataType;  // Tipe Data: 'warga' atau 'kk'
+  final String title;
+  final String dataType; // 'warga' atau 'kk'
 
-  const StatistikPerRtScreen({
-    super.key,
-    required this.title,
-    required this.dataType,
-  });
+  const StatistikPerRtScreen({super.key, required this.title, required this.dataType});
 
   @override
   State<StatistikPerRtScreen> createState() => _StatistikPerRtScreenState();
@@ -17,262 +13,183 @@ class StatistikPerRtScreen extends StatefulWidget {
 
 class _StatistikPerRtScreenState extends State<StatistikPerRtScreen> {
   bool _isLoading = true;
-  List<dynamic> _listRtData = [];
-  String? _errorMessage;
-
-  // Variabel helper untuk membedakan mode Warga atau KK
+  Map<String, dynamic>? _fullData;
   bool get _isWargaMode => widget.dataType == 'warga';
 
   @override
   void initState() {
     super.initState();
-    _fetchRtData();
+    _fetchLengkap();
   }
 
-  Future<void> _fetchRtData() async {
-    try {
-      // Menggunakan endpoint yang sama (getStatistikPerRt) 
-      // Pastikan Backend mengirimkan object lengkap: {total_warga, total_kk, gender, dll}
-      final data = await ApiService.getStatistikPerRt();
-      
-      if (mounted) {
-        setState(() {
-          _listRtData = data;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = "Gagal memuat data: $e";
-        });
-      }
+  Future<void> _fetchLengkap() async {
+    final result = await ApiService.getStatistikRWLengkap();
+    if (mounted) {
+      setState(() {
+        _fullData = result;
+        _isLoading = false;
+      });
     }
-  }
-
-  // --- FUNGSI POPUP GENDER (Khusus Mode Warga) ---
-  void _showGenderPopup(BuildContext context, String rtName, int laki, int perempuan) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(25),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
-              const SizedBox(height: 20),
-              
-              Text("Statistik Gender RT $rtName", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 5),
-              const Text("Detail persebaran gender di RT ini.", style: TextStyle(color: Colors.grey, fontSize: 12)),
-              const SizedBox(height: 20),
-              
-              _detailItem("Laki-laki", "$laki Jiwa", Icons.male, Colors.blue),
-              const SizedBox(height: 10),
-              _detailItem("Perempuan", "$perempuan Jiwa", Icons.female, Colors.pink),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // --- FUNGSI POPUP KK (Khusus Mode KK - Sederhana) ---
-  void _showKkPopup(BuildContext context, String rtName, int count) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(25),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
-              const SizedBox(height: 20),
-              
-              Text("Info KK - RT $rtName", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              
-              _detailItem("Total KK", "$count Kepala Keluarga", Icons.card_membership, Colors.green),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // Widget Item Baris untuk Popup
-  Widget _detailItem(String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(children: [Icon(icon, color: color), const SizedBox(width: 15), Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold))]),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Tentukan Warna Tema berdasarkan Tipe Data
-    final Color themeColor = _isWargaMode ? Colors.blue : Colors.green;
-    final IconData themeIcon = _isWargaMode ? Icons.people : Icons.folder_shared;
-
-    // Hitung Total Keseluruhan (Grand Total) dari list yang didapat
-    int grandTotal = 0;
-    if (!_isLoading && _listRtData.isNotEmpty) {
-      grandTotal = _listRtData.fold(0, (sum, item) {
-        final key = _isWargaMode ? 'total_warga' : 'total_kk';
-        // Pastikan parsing aman
-        final val = int.tryParse(item[key]?.toString() ?? '0') ?? 0;
-        return sum + val;
-      });
-    }
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    
+    final summary = _fullData?['summary'];
+    final rtList = _fullData?['rt_list'] as List<dynamic>? ?? [];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F2E5), // Background Cream
-      appBar: AppBar(
-        title: Text(widget.title, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          
-          // --- 1. HEADER RINGKASAN (Grand Total) ---
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: themeColor.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(themeIcon, color: themeColor, size: 30),
-                  ),
-                  const SizedBox(width: 20),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Total ${widget.dataType == 'warga' ? 'Warga' : 'KK'} Se-RW", 
-                        style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                      const SizedBox(height: 5),
-                      _isLoading 
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                        : Text(
-                            "$grandTotal", 
-                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                          ),
-                    ],
-                  ),
-                ],
-              ),
+      backgroundColor: const Color(0xFFF8F2E5),
+      appBar: AppBar(title: Text(widget.title), backgroundColor: Colors.transparent, elevation: 0, foregroundColor: Colors.black),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- HEADER SUMMARY ---
+            Text(_isWargaMode ? "Ringkasan Demografi Se-RW" : "Ringkasan Keluarga Se-RW", 
+                 style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            const SizedBox(height: 10),
+            _isWargaMode ? _buildWargaHeader(summary) : _buildKKHeader(summary),
+
+            const SizedBox(height: 30),
+            Text(_isWargaMode ? "Rincian Warga Per RT" : "Rincian KK Per RT", 
+                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFFD36F00))),
+            const SizedBox(height: 15),
+
+            // --- LIST RT ---
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: rtList.length,
+              itemBuilder: (context, index) {
+                final rt = rtList[index];
+                return _buildRTCard(rt);
+              },
             ),
-          ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 25),
-            child: Text("Rincian Per RT", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFD36F00))),
-          ),
-          const SizedBox(height: 10),
+  // --- WIDGET BUILDERS ---
 
-          // --- 2. LIST DATA PER RT ---
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null 
-                    ? Center(child: Text(_errorMessage!))
-                    : _listRtData.isEmpty
-                        ? const Center(child: Text("Belum ada data RT"))
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            itemCount: _listRtData.length,
-                            itemBuilder: (context, index) {
-                              final rt = _listRtData[index];
-                              
-                              // Tentukan Key JSON mana yang mau diambil
-                              final dataKey = _isWargaMode ? 'total_warga' : 'total_kk';
-                              final countValue = rt[dataKey]?.toString() ?? '0';
-
-                              return Card(
-                                elevation: 2,
-                                margin: const EdgeInsets.only(bottom: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                                child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                  leading: CircleAvatar(
-                                    backgroundColor: const Color(0xFFD36F00).withOpacity(0.1),
-                                    child: Text(
-                                      rt['nomor_rt'].toString(), 
-                                      style: const TextStyle(color: Color(0xFFD36F00), fontWeight: FontWeight.bold)
-                                    ),
-                                  ),
-                                  title: Text("RT ${rt['nomor_rt']}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                  
-                                  // Menampilkan Jumlah Warga atau KK
-                                  trailing: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: themeColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      "$countValue ${_isWargaMode ? 'Jiwa' : 'KK'}",
-                                      style: TextStyle(color: themeColor, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                  
-                                  onTap: () {
-                                    // LOGIKA KLIK BERDASARKAN TIPE DATA
-                                    if (_isWargaMode) {
-                                      // Jika Mode Warga -> Tampilkan Popup Gender
-                                      final genderRt = rt['gender'] ?? {};
-                                      final int lakiRt = int.tryParse(genderRt['laki']?.toString() ?? '0') ?? 0;
-                                      final int prRt = int.tryParse(genderRt['perempuan']?.toString() ?? '0') ?? 0;
-                                      
-                                      _showGenderPopup(context, rt['nomor_rt'].toString(), lakiRt, prRt);
-                                    } else {
-                                      // Jika Mode KK -> Tampilkan Info Sederhana (atau Popup KK)
-                                      final int totalKK = int.tryParse(countValue) ?? 0;
-                                      _showKkPopup(context, rt['nomor_rt'].toString(), totalKK);
-                                    }
-                                  },
-                                ),
-                              );
-                            },
-                          ),
+  Widget _buildWargaHeader(dynamic data) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration(),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _summaryItem(data?['pria'], "Pria", Icons.male, Colors.blue),
+              _summaryItem(data?['wanita'], "Wanita", Icons.female, Colors.pink),
+            ],
           ),
+          const Divider(height: 30),
+          _ageGrid(data),
         ],
       ),
     );
+  }
+
+  Widget _buildKKHeader(dynamic data) {
+    return Container(
+      padding: const EdgeInsets.all(25),
+      decoration: _cardDecoration(),
+      child: Row(
+        children: [
+          Icon(Icons.folder_shared, color: Colors.green, size: 40),
+          const SizedBox(width: 20),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Total Kartu Keluarga", style: TextStyle(color: Colors.grey)),
+              Text("${data?['total_kk'] ?? 0}", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRTCard(dynamic rt) {
+    final count = _isWargaMode ? rt['total_warga'] : rt['total_kk'];
+    final label = _isWargaMode ? "Jiwa" : "KK";
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: ListTile(
+        onTap: () => _isWargaMode ? _showDetailRT(rt) : null,
+        leading: CircleAvatar(backgroundColor: Colors.orange.shade50, child: Text(rt['nomor_rt'].toString(), style: const TextStyle(color: Colors.orange))),
+        title: Text("RT ${rt['nomor_rt']}"),
+        trailing: Text("$count $label", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+      ),
+    );
+  }
+
+  // --- POPUP DETAIL RT ---
+  void _showDetailRT(Map<String, dynamic> rt) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(25),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Statistik RT ${rt['nomor_rt']}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Divider(),
+            _rowInfo("Laki-laki", "${rt['pria']}", Icons.male, Colors.blue),
+            _rowInfo("Perempuan", "${rt['wanita']}", Icons.female, Colors.pink),
+            const SizedBox(height: 15),
+            _ageGrid(rt),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- HELPERS ---
+  BoxDecoration _cardDecoration() => BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]);
+
+  Widget _summaryItem(dynamic count, String label, IconData icon, Color color) {
+    return Flexible( // Fix Overflow
+      child: Column(
+        children: [
+          Icon(icon, color: color),
+          Text("${count ?? 0}", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _ageGrid(dynamic data) {
+    return Wrap(
+      spacing: 10, runSpacing: 10,
+      children: [
+        _ageBox("Lansia", data?['lansia'], Colors.orange),
+        _ageBox("Dewasa", data?['dewasa'], Colors.teal),
+        _ageBox("Remaja", data?['remaja'], Colors.indigo),
+        _ageBox("Anak", data?['anak'], Colors.redAccent),
+      ],
+    );
+  }
+
+  Widget _ageBox(String label, dynamic count, Color color) {
+    return Container(
+      width: 70, padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+      child: Column(children: [Text("${count ?? 0}", style: TextStyle(fontWeight: FontWeight.bold, color: color)), Text(label, style: TextStyle(fontSize: 10, color: color))]),
+    );
+  }
+
+  Widget _rowInfo(String label, String value, IconData icon, Color color) {
+    return Row(children: [Icon(icon, color: color), const SizedBox(width: 10), Text(label), const Spacer(), Text(value, style: const TextStyle(fontWeight: FontWeight.bold))]);
   }
 }
