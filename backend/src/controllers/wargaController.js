@@ -376,7 +376,7 @@ export const getDataList = async (req, res) => {
         }
 
         if (search) {
-          query += ` AND w.nama_lengkap ILIKE $${params.length + 1}`;
+          query += ` AND (w.nama_lengkap ILIKE $${params.length + 1} OR w.nik ILIKE $${params.length + 1})`;
           params.push(`%${search}%`); 
         }
 

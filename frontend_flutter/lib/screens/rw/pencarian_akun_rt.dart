@@ -131,7 +131,7 @@ class AccountSearchScreen extends StatelessWidget {
       ),
       // --- Bottom Navigation Bar ---
       bottomNavigationBar: BottomAppBar(
-        color: const Color (0xFF678267),
+        color: Colors.green[800],
         shape: const CircularNotchedRectangle(),
         child: SizedBox(
           height: 60.0,

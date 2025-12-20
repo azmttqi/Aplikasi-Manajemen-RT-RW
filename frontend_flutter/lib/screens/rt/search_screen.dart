@@ -55,7 +55,7 @@ class _SearchScreenState extends State<SearchScreen> {
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: "Cari Nama Warga...",
+                hintText: "Cari Nama Warga atau NIK Warga...",
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
