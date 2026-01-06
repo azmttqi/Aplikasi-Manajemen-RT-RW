@@ -1,69 +1,52 @@
-// =========================================
-// 1. IMPORTS (SEMUA HARUS DI ATAS)
-// =========================================
+// 1. IMPORTS
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import path from 'path'; // Tambahkan ini
+import { fileURLToPath } from 'url'; // Tambahkan ini untuk ESM
 
-// Import Koneksi Database (Agar tereksekusi)
+// Import Koneksi Database
 import pool from './config/db.js';
 
 // Import Routes
 import authRoutes from './routes/auth.js';
-import wargaRoutes from './routes/warga.js'; // Pastikan file ini ada, jika belum ada bisa dikomentari dulu
+import wargaRoutes from './routes/warga.js';
 import dashboardRoutes from "./routes/dashboard.js";
-
-// Import Middleware
 import { verifyToken } from './middleware/authMiddleware.js';
 
-// =========================================
+// Konfigurasi __dirname untuk ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // 2. CONFIGURATION & MIDDLEWARE
-// =========================================
-dotenv.config(); // Load environment variables
+dotenv.config();
 const app = express();
 
-// A. CORS (PENTING: Agar Flutter Web/Browser tidak diblokir)
 app.use(cors());
-
-// B. Body Parser (Agar bisa baca req.body format JSON)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// =========================================
-// 3. ROUTING (DAFTAR ALAMAT API)
-// =========================================
+// --- TAMBAHKAN INI: Menyajikan File Flutter ---
+// Kita arahkan ke folder '../public' karena app.js ada di dalam folder 'src'
+app.use(express.static(path.join(__dirname, '../public')));
 
-// Route Autentikasi (Register & Login)
-// Akses: http://localhost:5000/api/auth/register-rw, dll
+// 3. ROUTING (API)
 app.use('/api/auth', authRoutes);
-
-// Route Data Warga (Contoh: Dashboard RW)
-// Akses: http://localhost:5000/api/warga/...
-// Jika file warga.js belum siap, baris ini bisa dikomentari dulu:
 app.use('/api/warga', wargaRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-app.use(express.urlencoded({ extended: true })); // <--- Tambahkan baris ini agar form HTML terbaca
-// Route Test Token (Hanya bisa diakses jika punya token login)
+app.use('/api/dashboard', dashboardRoutes);
+
 app.get('/api/protected', verifyToken, (req, res) => {
-  res.json({
-    message: "✅ Token Valid! Akses diterima.",
-    user_info: req.user // Data user dari token
-  });
+  res.json({ message: "✅ Token Valid!", user_info: req.user });
 });
 
-// Route Cek Server (Health Check)
-// Akses: http://localhost:5000/
-app.get('/', (req, res) => {
-  res.send('Server & Database OK ✅');
+// --- UBAH INI: Route Utama ---
+// Agar ketika buka localhost:5000, yang muncul adalah Flutter, bukan tulisan teks
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
-// =========================================
 // 4. SERVER LISTENER
-// =========================================
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
-  console.log(`==========================================`);
-  console.log(`🚀 Server running on: http://localhost:${PORT}`);
-  console.log(`==========================================`);
+  console.log(`🚀 Server & UI running on: http://localhost:${PORT}`);
 });
