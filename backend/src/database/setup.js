@@ -85,7 +85,7 @@ const setupDatabase = async () => {
         status_perkawinan VARCHAR(20),
         golongan_darah VARCHAR(5)
         kewarganegaraan VARCHAR(50) DEFAULT 'WNI',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         alamat TEXT,
       );
     `);
