@@ -1,14 +1,13 @@
-#🏘️ Aplikasi Manajemen RT/RW (Lingkar Warga)
-
+# 🏘️ Aplikasi Manajemen RT/RW (Lingkar Warga)
 Lingkar Warga adalah platform manajemen administrasi lingkungan digital yang dirancang untuk mempermudah pendataan warga, sistem verifikasi akun, hingga pelaporan mandiri secara transparan. Proyek ini dikembangkan sebagai Project Kuliah 14 SKS di Fakultas Sains dan Teknologi, Universitas Tazkia.
 
-#👥 Tim Pengembang
+# 👥 Tim Pengembang
 
 1. Azmi Ittaqi Hammami – Project Manager, System Analyst & Backend Developer
 2. Amanda Wijayanti – UI/UX Designer & Frontend Developer
 3. Muhammad Nabil Thoriq – Test Engineer
 
-#🚀 Arsitektur Proyek
+# 🚀 Arsitektur Proyek
 
 Aplikasi ini menggunakan pendekatan kontainerisasi (Docker) untuk memastikan lingkungan pengembangan dan produksi tetap konsisten:
 
@@ -27,9 +26,9 @@ project-manajemen-RT-RW/
 │
 ├── docker-compose.yml     # Konfigurasi Layanan Docker (App & DB)
 └── README.md              # Dokumentasi Utama
+---
 
-
-#💻 Prasyarat Sistem
+# 💻 Prasyarat Sistem
 
 Sebelum menjalankan proyek di laptop baru, pastikan perangkat Anda telah terpasang:
 
@@ -37,13 +36,12 @@ Sebelum menjalankan proyek di laptop baru, pastikan perangkat Anda telah terpasa
 2. Docker Desktop: Wajib untuk menjalankan database PostgreSQL dan Backend secara instan.
 3. Flutter SDK: (Opsional) Hanya jika Anda ingin mengembangkan atau melakukan build ulang UI.
 
-#⚙️ Panduan Menjalankan Proyek
+# ⚙️ Panduan Menjalankan Proyek
 
 1. Clone Repository
 
 Buka terminal dan jalankan perintah berikut:
 
-bash
 git clone [https://github.com/azmttqi/Aplikasi-Manajemen-RT-RW.git](https://github.com/azmttqi/Aplikasi-Manajemen-RT-RW.git)
 cd Aplikasi-Manajemen-RT-RW
 
@@ -52,7 +50,7 @@ cd Aplikasi-Manajemen-RT-RW
 
 Buat file baru bernama .env di dalam folder backend/. Isi dengan template berikut (Sesuaikan dengan kredensial Anda):
 
-bash
+
 # DATABASE CONFIG
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=password_aman_anda
@@ -74,18 +72,18 @@ MAIL_PORT=587
 3. Build dan Jalankan Docker
 
 Jalankan perintah ini di folder utama proyek:
-bash
+
 docker compose up -d --build
 
 
 4. Inisialisasi Database (WAJIB)
 
 Langkah ini sangat penting untuk membangun tabel agar backend bisa berjalan:
-bash
+
 docker exec -it backend_rtrw node src/database/setup.js
+---
 
-
-#🔄 Alur Pembaruan (Development Workflow)
+# 🔄 Alur Pembaruan (Development Workflow)
 
 Update Tampilan (UI)
 
@@ -99,12 +97,12 @@ Update Database
 - Reset Struktur: Jalankan kembali setup.js (Hati-hati: Data lama akan terhapus).
 - Tambah Kolom: Gunakan perintah ALTER TABLE melalui terminal PostgreSQL Docker agar data tetap aman.
 
-#🌐 Akses Aplikasi
+# 🌐 Akses Aplikasi
 
 - Frontend: http://localhost:5001 atau via domain resmi https://rtrw.demo.tazkia.ac.id
 - Backend API: http://localhost:5000/api
 
-#🛡️ Catatan Keamanan
+# 🛡️ Catatan Keamanan
 
 - DILARANG mengunggah file .env asli ke publik/GitHub.
 - Selalu gunakan file .gitignore untuk mengecualikan folder node_modules dan file rahasia lainnya.
