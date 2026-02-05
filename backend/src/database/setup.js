@@ -83,7 +83,7 @@ const setupDatabase = async () => {
         agama VARCHAR(20),
         pekerjaan VARCHAR(50),
         status_perkawinan VARCHAR(20),
-        golongan_darah VARCHAR(5)
+        golongan_darah VARCHAR(5),
         kewarganegaraan VARCHAR(50) DEFAULT 'WNI',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         alamat TEXT
