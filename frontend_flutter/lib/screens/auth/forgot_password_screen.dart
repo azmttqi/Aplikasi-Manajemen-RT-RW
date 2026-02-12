@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async'; // Tambahan untuk menangani Timeout
 import '../../widgets/logo_widget.dart';
+import 'package:frontend_flutter/App_config.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -52,7 +53,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     try {
       // Setup URL (Sesuaikan IP seperti sebelumnya)
       // Gunakan 10.0.2.2 untuk Emulator, atau IP Laptop untuk Real Device
-      final url = Uri.parse('http://localhost:5000/api/auth/forgot-password');
+      final url = Uri.parse('${AppConfig.baseUrl}/auth/forgot-password');
 
       // --- PERBAIKAN 3: MENAMBAHKAN TIMEOUT ---
       // Jika 10 detik tidak ada respon, anggap koneksi putus

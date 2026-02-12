@@ -491,7 +491,7 @@ export const forgotPassword = async (req, res) => {
 
     // 3. Siapkan Isi Email
     // (Di aplikasi asli, biasanya di sini kita buat token unik. Ini contoh simulasi link)
-    const resetLink = `http://localhost:5000/api/auth/reset-password-page?email=${email}`; 
+    const resetLink = `${process.env.APP_URL}/api/auth/reset-password-page?email=${email}`; 
 
     const mailOptions = {
       from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,

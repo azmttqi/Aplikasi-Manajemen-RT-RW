@@ -10,7 +10,9 @@ class ApiService {
   // ===========================================================================
   // - Pakai '10.0.2.2' jika pakai Emulator Android
   // - Pakai IP Laptop (misal '192.168.1.5') jika pakai HP Asli (Harus satu WiFi)
-  static const String baseUrl = "https://rtrw.demo.tazkia.ac.id/api";
+  static const String baseUrl = kReleaseMode 
+    ? "https://rtrw.demo.tazkia.ac.id/api" 
+    : "http://localhost:5001/api";
 
   static const Duration _timeout = Duration(seconds: 15); // Batas waktu koneksi
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:frontend_flutter/App_config.dart';
 
 class LengkapiProfilScreen extends StatefulWidget {
   final String statusVerifikasi;
@@ -13,7 +14,7 @@ class LengkapiProfilScreen extends StatefulWidget {
 }
 
 class _LengkapiProfilScreenState extends State<LengkapiProfilScreen> {
-  final String baseUrl = "http://localhost:5000/api";
+  final String baseUrl = AppConfig.baseUrl;
 
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = true;

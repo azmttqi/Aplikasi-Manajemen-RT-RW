@@ -26890,22 +26890,23 @@ aoT:function aoT(a,b){this.a=a
 this.b=b},
 q0:function q0(a,b){this.c=a
 this.a=b},
-FN:function FN(a,b,c,d,e,f,g,h,i,j,k,l){var _=this
-_.e=a
+FN:function FN(a,b,c,d,e,f,g,h,i,j,k,l,m){var _=this
+_.d=a
+_.e=b
 _.f=!0
 _.r=!1
-_.w=b
-_.x=c
-_.y=d
-_.z=e
-_.Q=f
+_.w=c
+_.x=d
+_.y=e
+_.z=f
+_.Q=g
 _.CW=_.ch=_.ay=_.ax=_.at=_.as=null
-_.cx=g
-_.cy=h
-_.db=i
-_.dx=j
-_.dy=k
-_.fr=l
+_.cx=h
+_.cy=i
+_.db=j
+_.dx=k
+_.dy=l
+_.fr=m
 _.c=_.a=null},
 aqg:function aqg(a){this.a=a},
 aqh:function aqh(a,b){this.a=a
@@ -89507,7 +89508,7 @@ if(!g.b.test(l)){m.qq("Format email tidak valid.",B.aN)
 s=1
 break}m.L(new A.aoP(m))
 p=4
-k=A.cy("http://localhost:5000/api/auth/forgot-password")
+k=A.cy("https://rtrw.demo.tazkia.ac.id/api/auth/forgot-password")
 c=t.N
 f=A.aa(["Content-Type","application/json"],c,c)
 s=7
@@ -91550,7 +91551,7 @@ return A.D($async$$0,r)},
 $S:7}
 A.q0.prototype={
 a_(){var s=$.a3(),r=t.s
-return new A.FN(new A.b9(null,t.am),new A.bm(B.I,s),new A.bm(B.I,s),new A.bm(B.I,s),new A.bm(B.I,s),new A.bm(B.I,s),A.b(["Laki-laki","Perempuan"],r),A.b(["Islam","Kristen","Katolik","Hindu","Buddha","Konghucu"],r),A.b(["Belum Kawin","Kawin","Cerai Hidup","Cerai Mati"],r),A.b(["A","B","AB","O","-"],r),A.b(["WNI","WNA"],r),A.b(["PNS / TNI / POLRI","Karyawan Swasta","Wiraswasta","Buruh Harian Lepas","Pelajar / Mahasiswa","Ibu Rumah Tangga","Tidak / Belum Bekerja","Lainnya"],r))}}
+return new A.FN("https://rtrw.demo.tazkia.ac.id/api",new A.b9(null,t.am),new A.bm(B.I,s),new A.bm(B.I,s),new A.bm(B.I,s),new A.bm(B.I,s),new A.bm(B.I,s),A.b(["Laki-laki","Perempuan"],r),A.b(["Islam","Kristen","Katolik","Hindu","Buddha","Konghucu"],r),A.b(["Belum Kawin","Kawin","Cerai Hidup","Cerai Mati"],r),A.b(["A","B","AB","O","-"],r),A.b(["WNI","WNA"],r),A.b(["PNS / TNI / POLRI","Karyawan Swasta","Wiraswasta","Buruh Harian Lepas","Pelajar / Mahasiswa","Ibu Rumah Tangga","Tidak / Belum Bekerja","Lainnya"],r))}}
 A.FN.prototype={
 af(){this.aA()
 this.a85()
@@ -91584,7 +91585,7 @@ n=[1]
 s=5
 break}f=t.N
 s=8
-return A.y(A.jx(A.cy("http://localhost:5000/api/warga/pribadi/saya"),A.aa(["Authorization","Bearer "+k,"Content-Type","application/json"],f,f)),$async$tZ)
+return A.y(A.jx(A.cy(m.d+"/warga/pribadi/saya"),A.aa(["Authorization","Bearer "+k,"Content-Type","application/json"],f,f)),$async$tZ)
 case 8:j=b
 if(m.c==null){n=[1]
 s=5
@@ -91635,7 +91636,7 @@ n=[1]
 s=5
 break}g=t.N
 j=A.aa(["nik",m.w.a.a,"nama_lengkap",m.x.a.a,"tempat_lahir",m.y.a.a,"tanggal_lahir",m.z.a.a,"jenis_kelamin",m.as,"agama",m.at,"pekerjaan",m.CW,"alamat_lengkap",m.Q.a.a,"status_perkawinan",m.ax,"golongan_darah",m.ay,"kewarganegaraan",m.ch],g,t.ob)
-f=A.cy("http://localhost:5000/api/warga/update-data")
+f=A.cy(m.d+"/warga/update-data")
 g=A.aa(["Authorization","Bearer "+k,"Content-Type","application/json"],g,g)
 s=8
 return A.y(A.Jb(f,B.ac.kv(j,null),g),$async$uE)
